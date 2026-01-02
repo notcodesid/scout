@@ -219,15 +219,13 @@ const StartupDetail = () => {
                   <span className="text-sm">Website</span>
                 </a>
                 {startup.ycUrl && (
-                  <a
-                    href={startup.ycUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-lg bg-secondary/50 p-3 transition-colors hover:bg-secondary"
+                  <button
+                    onClick={() => window.open(startup.ycUrl, '_blank', 'noopener,noreferrer')}
+                    className="flex w-full items-center gap-3 rounded-lg bg-secondary/50 p-3 transition-colors hover:bg-secondary text-left"
                   >
                     <ExternalLink className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">YC Profile</span>
-                  </a>
+                  </button>
                 )}
               </div>
             </div>
