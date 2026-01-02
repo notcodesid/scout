@@ -1,6 +1,7 @@
-import { ExternalLink, Linkedin, Users } from "lucide-react";
+import { ExternalLink, Linkedin, Users, Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "./ui/badge";
+import { useState } from "react";
 
 export interface Startup {
   id: string;
@@ -13,6 +14,7 @@ export interface Startup {
   location: string;
   founders: { name: string; linkedin?: string }[];
   batch?: string;
+  logoUrl?: string;
 }
 
 interface StartupCardProps {
@@ -21,6 +23,8 @@ interface StartupCardProps {
 }
 
 const StartupCard = ({ startup, index }: StartupCardProps) => {
+  const [logoError, setLogoError] = useState(false);
+
   return (
     <article
       className="glass-card group relative overflow-hidden p-5 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
@@ -34,30 +38,50 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
       </div>
 
       <div className="relative">
-        {/* Header */}
-        <div className="mb-3 flex items-start justify-between">
-          <div>
-            <Link 
-              to={`/startup/${startup.id}`}
-              className="font-display text-lg font-semibold text-foreground transition-colors group-hover:text-primary hover:underline"
-            >
-              {startup.name}
-            </Link>
-            {startup.batch && (
-              <Badge variant="accent" className="ml-2">
-                {startup.batch}
-              </Badge>
+        {/* Header with Logo */}
+        <div className="mb-3 flex items-start gap-3">
+          {/* Company Logo */}
+          <div className="shrink-0">
+            {startup.logoUrl && !logoError ? (
+              <img
+                src={startup.logoUrl}
+                alt={`${startup.name} logo`}
+                className="h-10 w-10 rounded-lg bg-white/10 object-contain p-1"
+                onError={() => setLogoError(true)}
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
+                <Building2 className="h-5 w-5 text-muted-foreground" />
+              </div>
             )}
           </div>
-          <a
-            href={startup.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition-all hover:bg-primary hover:text-primary-foreground"
-          >
-            <ExternalLink className="h-4 w-4" />
-          </a>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <Link 
+                  to={`/startup/${startup.id}`}
+                  className="font-display text-lg font-semibold text-foreground transition-colors group-hover:text-primary hover:underline block truncate"
+                >
+                  {startup.name}
+                </Link>
+                {startup.batch && (
+                  <Badge variant="accent" className="mt-1">
+                    {startup.batch}
+                  </Badge>
+                )}
+              </div>
+              <a
+                href={startup.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition-all hover:bg-primary hover:text-primary-foreground"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* Description */}
