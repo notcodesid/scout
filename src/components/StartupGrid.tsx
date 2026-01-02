@@ -6,21 +6,26 @@ interface StartupGridProps {
   startups: Startup[];
   sortBy: string;
   onSortChange: (sort: string) => void;
+  totalCount?: number;
 }
 
-const StartupGrid = ({ startups, sortBy, onSortChange }: StartupGridProps) => {
+const StartupGrid = ({ startups, sortBy, onSortChange, totalCount }: StartupGridProps) => {
   const sortOptions = [
     { value: "latest", label: "Latest" },
     { value: "name", label: "Name" },
     { value: "teamSize", label: "Team Size" },
   ];
 
+  const displayCount = totalCount !== undefined 
+    ? `${startups.length} of ${totalCount}` 
+    : startups.length.toString();
+
   return (
     <section className="flex-1" id="directory">
       {/* Sort Controls */}
       <div className="mb-6 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing <span className="font-medium text-foreground">{startups.length}</span> startups
+          Showing <span className="font-medium text-foreground">{displayCount}</span> startups
         </p>
         <div className="flex items-center gap-2">
           <ArrowUpDown className="h-4 w-4 text-muted-foreground" />

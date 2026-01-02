@@ -5,8 +5,10 @@ import FilterSidebar from "@/components/FilterSidebar";
 import StartupGrid from "@/components/StartupGrid";
 import ComingSoon from "@/components/ComingSoon";
 import Footer from "@/components/Footer";
-import { useStartups } from "@/hooks/use-yc-startups";
+import { useInfiniteStartups, flattenStartups } from "@/hooks/use-yc-startups";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -18,9 +20,18 @@ const Index = () => {
     founded: "all",
   });
 
-  // Fetch live YC startup data
-  const { data: startupsData, isLoading, error } = useStartups("hiring");
-  const startups = startupsData?.data || [];
+  // Fetch live YC startup data with infinite loading
+  const {
+    data,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteStartups("hiring", 50);
+
+  const startups = flattenStartups(data?.pages);
+  const totalCount = data?.pages?.[0]?.total || 0;
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -156,11 +167,37 @@ const Index = () => {
                   </div>
                 </div>
               ) : (
-                <StartupGrid
-                  startups={filteredStartups}
-                  sortBy={sortBy}
-                  onSortChange={setSortBy}
-                />
+                <div className="flex-1">
+                  <StartupGrid
+                    startups={filteredStartups}
+                    sortBy={sortBy}
+                    onSortChange={setSortBy}
+                    totalCount={totalCount}
+                  />
+                  
+                  {/* Load More Button */}
+                  {hasNextPage && (
+                    <div className="mt-8 flex justify-center">
+                      <Button
+                        onClick={() => fetchNextPage()}
+                        disabled={isFetchingNextPage}
+                        variant="outline"
+                        size="lg"
+                        className="min-w-[200px]"
+                      >
+                        {isFetchingNextPage ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Loading...
+                          </>
+                        ) : (
+                          <>Load More Startups</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                  
+                </div>
               )}
             </div>
           </div>
