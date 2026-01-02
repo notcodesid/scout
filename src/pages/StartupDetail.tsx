@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Linkedin, Twitter, MapPin, Users, Calendar, Building, Briefcase } from "lucide-react";
+import { ArrowLeft, ExternalLink, MapPin, Users, Calendar, Building, Briefcase, Globe, Award, Layers } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -117,6 +117,12 @@ const StartupDetail = () => {
                           Hiring
                         </Badge>
                       )}
+                      {startup.isTopCompany && (
+                        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                          <Award className="h-3 w-3 mr-1" />
+                          Top Company
+                        </Badge>
+                      )}
                     </div>
                     <p className="mt-2 text-lg text-muted-foreground">{startup.description}</p>
                   </div>
@@ -181,6 +187,66 @@ const StartupDetail = () => {
               <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
                 {startup.longDescription || startup.description}
               </p>
+            </div>
+
+            {/* Company Details */}
+            <div className="glass-card p-6 md:p-8">
+              <h2 className="font-display text-xl font-semibold mb-4">Company Details</h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {startup.subindustry && (
+                  <div className="flex items-start gap-3">
+                    <Layers className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Sub-Industry</p>
+                      <p className="font-medium">{startup.subindustry}</p>
+                    </div>
+                  </div>
+                )}
+                {startup.stage && (
+                  <div className="flex items-start gap-3">
+                    <Building className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Stage</p>
+                      <p className="font-medium">{startup.stage}</p>
+                    </div>
+                  </div>
+                )}
+                {startup.status && (
+                  <div className="flex items-start gap-3">
+                    <Award className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Status</p>
+                      <p className="font-medium">{startup.status}</p>
+                    </div>
+                  </div>
+                )}
+                {startup.industries && startup.industries.length > 0 && (
+                  <div className="flex items-start gap-3 sm:col-span-2">
+                    <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Industries</p>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {startup.industries.map((ind) => (
+                          <Badge key={ind} variant="secondary">{ind}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {startup.regions && startup.regions.length > 0 && (
+                  <div className="flex items-start gap-3 sm:col-span-2">
+                    <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Regions</p>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {startup.regions.map((region) => (
+                          <Badge key={region} variant="outline">{region}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Hiring Status */}

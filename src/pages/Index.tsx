@@ -18,6 +18,7 @@ const Index = () => {
     location: "all",
     teamSize: "all",
     founded: "all",
+    hiringOnly: true,
   });
 
   // Fetch live YC startup data with infinite loading
@@ -33,12 +34,17 @@ const Index = () => {
   const startups = flattenStartups(data?.pages);
   const totalCount = data?.pages?.[0]?.total || 0;
 
-  const handleFilterChange = (key: string, value: string) => {
+  const handleFilterChange = (key: string, value: string | boolean) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const filteredStartups = useMemo(() => {
     let result = [...startups];
+
+    // Hiring filter
+    if (filters.hiringOnly) {
+      result = result.filter((startup) => startup.isHiring);
+    }
 
     // Search filter
     if (searchQuery) {
