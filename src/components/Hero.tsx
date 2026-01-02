@@ -6,9 +6,12 @@ import { Input } from "./ui/input";
 interface HeroProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  totalStartups?: number;
 }
 
-const Hero = ({ searchQuery, onSearchChange }: HeroProps) => {
+const Hero = ({ searchQuery, onSearchChange, totalStartups }: HeroProps) => {
+  const startupCount = totalStartups ? `${totalStartups.toLocaleString()}` : "1,300+";
+  
   return (
     <section className="relative overflow-hidden py-20 md:py-32">
       {/* Background Effects */}
@@ -23,7 +26,7 @@ const Hero = ({ searchQuery, onSearchChange }: HeroProps) => {
         {/* Badge */}
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm text-primary animate-fade-in">
           <Sparkles className="h-4 w-4" />
-          <span>Explore 400+ YC Startups</span>
+          <span>Explore {startupCount} YC Startups Hiring</span>
         </div>
 
         {/* Heading */}
@@ -70,10 +73,10 @@ const Hero = ({ searchQuery, onSearchChange }: HeroProps) => {
         {/* Stats */}
         <div className="mt-16 grid grid-cols-2 gap-8 md:grid-cols-4 animate-fade-in" style={{ animationDelay: "0.5s" }}>
           {[
-            { value: "400+", label: "Startups" },
-            { value: "10+", label: "Industries" },
-            { value: "800+", label: "Founders" },
-            { value: "$2B+", label: "Total Funding" },
+            { value: startupCount, label: "Startups Hiring" },
+            { value: "20+", label: "Industries" },
+            { value: "5,500+", label: "YC Companies" },
+            { value: "$600B+", label: "Total Valuation" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <div className="font-display text-3xl font-bold text-foreground md:text-4xl">

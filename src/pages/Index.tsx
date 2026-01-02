@@ -126,7 +126,7 @@ const Index = () => {
       <Header />
       
       <main>
-        <Hero searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+        <Hero searchQuery={searchQuery} onSearchChange={setSearchQuery} totalStartups={totalCount} />
 
         {/* Directory Section */}
         <section className="border-t border-border/50 py-12 md:py-20">
