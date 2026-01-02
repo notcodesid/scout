@@ -1,6 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 
 interface FilterSection {
   title: string;
@@ -13,8 +14,9 @@ interface FilterSidebarProps {
     location: string;
     teamSize: string;
     founded: string;
+    hiringOnly: boolean;
   };
-  onFilterChange: (key: string, value: string) => void;
+  onFilterChange: (key: string, value: string | boolean) => void;
 }
 
 const filterSections: FilterSection[] = [
@@ -96,6 +98,18 @@ const FilterSidebar = ({ filters, onFilterChange }: FilterSidebarProps) => {
         <h3 className="mb-4 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Filters
         </h3>
+
+        {/* Hiring Only Toggle */}
+        <div className="mb-4 flex items-center justify-between rounded-lg bg-emerald-500/10 p-3 border border-emerald-500/20">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-emerald-400">Hiring Only</span>
+          </div>
+          <Switch
+            checked={filters.hiringOnly}
+            onCheckedChange={(checked) => onFilterChange("hiringOnly", checked)}
+            className="data-[state=checked]:bg-emerald-500"
+          />
+        </div>
 
         {filterSections.map((section) => {
           const filterKey = getFilterKey(section.title);

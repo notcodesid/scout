@@ -21,6 +21,10 @@ interface YCCompany {
   isHiring: boolean;
   small_logo_thumb_url?: string;
   url?: string;
+  regions?: string[];
+  industries?: string[];
+  stage?: string;
+  top_company?: boolean;
 }
 
 interface TransformedStartup {
@@ -39,7 +43,11 @@ interface TransformedStartup {
   isHiring: boolean;
   logoUrl?: string;
   ycUrl?: string;
-  founders: { name: string; linkedin?: string }[];
+  regions?: string[];
+  industries?: string[];
+  stage?: string;
+  isTopCompany?: boolean;
+  status?: string;
 }
 
 function extractYear(timestamp: number): string {
@@ -64,7 +72,11 @@ function transformCompany(company: YCCompany): TransformedStartup {
     isHiring: company.isHiring || false,
     logoUrl: company.small_logo_thumb_url,
     ycUrl: company.url || `https://www.ycombinator.com/companies/${company.slug}`,
-    founders: [],
+    regions: company.regions || [],
+    industries: company.industries || [],
+    stage: company.stage,
+    isTopCompany: company.top_company || false,
+    status: company.status,
   };
 }
 

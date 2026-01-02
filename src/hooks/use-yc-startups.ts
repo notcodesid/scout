@@ -4,9 +4,15 @@ import { Startup } from "@/components/StartupCard";
 export interface YCStartup extends Startup {
   longDescription?: string;
   industry?: string;
+  subindustry?: string;
   isHiring?: boolean;
   logoUrl?: string;
   ycUrl?: string;
+  regions?: string[];
+  industries?: string[];
+  stage?: string;
+  isTopCompany?: boolean;
+  status?: string;
 }
 
 interface FetchYCStartupsParams {
