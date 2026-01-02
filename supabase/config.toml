@@ -2,3 +2,6 @@ project_id = "kkpvzubaruqwuujwysnb"
 
 [functions.fetch-yc-startups]
 verify_jwt = false
+
+[functions.fetch-startup-detail]
+verify_jwt = false

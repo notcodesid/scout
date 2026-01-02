@@ -1,16 +1,62 @@
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Linkedin, Twitter, MapPin, Users, Calendar, DollarSign, Building, TrendingUp } from "lucide-react";
+import { ArrowLeft, ExternalLink, Linkedin, Twitter, MapPin, Users, Calendar, Building, Briefcase } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { startups, getRelatedStartups, StartupFull } from "@/data/startups";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useStartupDetail } from "@/hooks/use-startup-detail";
 
 const StartupDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const startup = startups.find((s) => s.id === id);
+  const { data, isLoading, error } = useStartupDetail(id);
+  
+  const startup = data?.data;
+  const relatedStartups = data?.related || [];
 
-  if (!startup) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8 md:py-12">
+          <Skeleton className="h-6 w-32 mb-8" />
+          <div className="grid gap-8 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-8">
+              <div className="glass-card p-6 md:p-8">
+                <Skeleton className="h-10 w-3/4 mb-4" />
+                <Skeleton className="h-6 w-full mb-6" />
+                <div className="flex gap-2 mb-8">
+                  <Skeleton className="h-6 w-20" />
+                  <Skeleton className="h-6 w-24" />
+                  <Skeleton className="h-6 w-16" />
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-24 rounded-lg" />
+                  ))}
+                </div>
+              </div>
+              <div className="glass-card p-6 md:p-8">
+                <Skeleton className="h-6 w-48 mb-4" />
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            </div>
+            <div className="space-y-6">
+              <div className="glass-card p-6">
+                <Skeleton className="h-6 w-24 mb-4" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error || !startup) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -28,8 +74,6 @@ const StartupDetail = () => {
       </div>
     );
   }
-
-  const relatedStartups = getRelatedStartups(startup, startups);
 
   return (
     <div className="min-h-screen bg-background">
@@ -51,16 +95,31 @@ const StartupDetail = () => {
             {/* Header */}
             <div className="glass-card p-6 md:p-8">
               <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h1 className="font-display text-3xl font-bold md:text-4xl">{startup.name}</h1>
-                    {startup.batch && (
-                      <Badge variant="accent" className="text-sm">
-                        {startup.batch}
-                      </Badge>
-                    )}
+                <div className="flex items-start gap-4">
+                  {/* Logo */}
+                  {startup.logoUrl && (
+                    <img
+                      src={startup.logoUrl}
+                      alt={`${startup.name} logo`}
+                      className="h-16 w-16 rounded-xl bg-white/10 object-contain p-2"
+                    />
+                  )}
+                  <div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h1 className="font-display text-3xl font-bold md:text-4xl">{startup.name}</h1>
+                      {startup.batch && (
+                        <Badge variant="accent" className="text-sm">
+                          {startup.batch}
+                        </Badge>
+                      )}
+                      {startup.isHiring && (
+                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                          Hiring
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="mt-2 text-lg text-muted-foreground">{startup.description}</p>
                   </div>
-                  <p className="mt-2 text-lg text-muted-foreground">{startup.description}</p>
                 </div>
                 <a href={startup.website} target="_blank" rel="noopener noreferrer">
                   <Button variant="hero" size="lg">
@@ -93,21 +152,25 @@ const StartupDetail = () => {
                     <Users className="h-4 w-4" />
                     <span className="text-xs">Team Size</span>
                   </div>
-                  <p className="mt-1 font-display text-xl font-semibold">{startup.employees || `${startup.teamSize}`}</p>
+                  <p className="mt-1 font-display text-xl font-semibold">{startup.teamSize || "N/A"}</p>
                 </div>
                 <div className="rounded-lg bg-secondary/50 p-4">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <MapPin className="h-4 w-4" />
                     <span className="text-xs">Location</span>
                   </div>
-                  <p className="mt-1 font-display text-xl font-semibold">{startup.location}</p>
+                  <p className="mt-1 font-display text-lg font-semibold truncate" title={startup.location}>
+                    {startup.location.split(",")[0]}
+                  </p>
                 </div>
                 <div className="rounded-lg bg-secondary/50 p-4">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Building className="h-4 w-4" />
                     <span className="text-xs">Industry</span>
                   </div>
-                  <p className="mt-1 font-display text-xl font-semibold">{startup.industry || "Tech"}</p>
+                  <p className="mt-1 font-display text-lg font-semibold truncate" title={startup.industry}>
+                    {startup.industry}
+                  </p>
                 </div>
               </div>
             </div>
@@ -115,84 +178,33 @@ const StartupDetail = () => {
             {/* About */}
             <div className="glass-card p-6 md:p-8">
               <h2 className="font-display text-xl font-semibold mb-4">About {startup.name}</h2>
-              <p className="text-muted-foreground leading-relaxed">
+              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
                 {startup.longDescription || startup.description}
               </p>
             </div>
 
-            {/* Funding Rounds */}
-            {startup.fundingRounds && startup.fundingRounds.length > 0 && (
-              <div className="glass-card p-6 md:p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="font-display text-xl font-semibold">Funding History</h2>
-                  {startup.totalFunding && (
-                    <div className="flex items-center gap-2 text-primary">
-                      <TrendingUp className="h-5 w-5" />
-                      <span className="font-display text-xl font-bold">{startup.totalFunding}</span>
-                      <span className="text-sm text-muted-foreground">Total</span>
-                    </div>
-                  )}
+            {/* Hiring Status */}
+            {startup.isHiring && (
+              <div className="glass-card p-6 md:p-8 border-emerald-500/20">
+                <div className="flex items-center gap-3 mb-4">
+                  <Briefcase className="h-5 w-5 text-emerald-400" />
+                  <h2 className="font-display text-xl font-semibold">Currently Hiring</h2>
                 </div>
-
-                <div className="space-y-4">
-                  {startup.fundingRounds.map((round, index) => (
-                    <div
-                      key={index}
-                      className="relative flex items-start gap-4 rounded-lg bg-secondary/30 p-4"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <DollarSign className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-display font-semibold">{round.stage}</span>
-                          <span className="text-primary font-bold">{round.amount}</span>
-                          <span className="text-sm text-muted-foreground">• {round.date}</span>
-                        </div>
-                        {round.investors && round.investors.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {round.investors.map((investor) => (
-                              <Badge key={investor} variant="outline" className="text-xs">
-                                {investor}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-muted-foreground mb-4">
+                  {startup.name} is actively looking for talented people to join their team.
+                </p>
+                <a href={startup.website} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
+                    View Open Positions
+                    <ExternalLink className="h-4 w-4 ml-2" />
+                  </Button>
+                </a>
               </div>
             )}
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Founders */}
-            <div className="glass-card p-6">
-              <h2 className="font-display text-lg font-semibold mb-4">Founders</h2>
-              <div className="space-y-3">
-                {startup.founders.map((founder) => (
-                  <a
-                    key={founder.name}
-                    href={founder.linkedin || "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-lg bg-secondary/50 p-3 transition-colors hover:bg-secondary"
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-display font-bold">
-                      {founder.name.split(" ").map((n) => n[0]).join("")}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{founder.name}</p>
-                      <p className="text-xs text-muted-foreground">Co-Founder</p>
-                    </div>
-                    <Linkedin className="h-4 w-4 text-muted-foreground" />
-                  </a>
-                ))}
-              </div>
-            </div>
-
             {/* Links */}
             <div className="glass-card p-6">
               <h2 className="font-display text-lg font-semibold mb-4">Links</h2>
@@ -206,26 +218,15 @@ const StartupDetail = () => {
                   <ExternalLink className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Website</span>
                 </a>
-                {startup.linkedin && (
+                {startup.ycUrl && (
                   <a
-                    href={startup.linkedin}
+                    href={startup.ycUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-3 rounded-lg bg-secondary/50 p-3 transition-colors hover:bg-secondary"
                   >
-                    <Linkedin className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">LinkedIn</span>
-                  </a>
-                )}
-                {startup.twitter && (
-                  <a
-                    href={startup.twitter}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-lg bg-secondary/50 p-3 transition-colors hover:bg-secondary"
-                  >
-                    <Twitter className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">Twitter</span>
+                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">YC Profile</span>
                   </a>
                 )}
               </div>
@@ -242,15 +243,22 @@ const StartupDetail = () => {
                       to={`/startup/${related.id}`}
                       className="block rounded-lg bg-secondary/50 p-3 transition-colors hover:bg-secondary"
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{related.name}</p>
+                      <div className="flex items-center gap-3">
+                        {related.logoUrl && (
+                          <img
+                            src={related.logoUrl}
+                            alt={related.name}
+                            className="h-8 w-8 rounded-md bg-white/10 object-contain p-1"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{related.name}</p>
                           <p className="text-xs text-muted-foreground line-clamp-1">
                             {related.description}
                           </p>
                         </div>
                         {related.batch && (
-                          <Badge variant="accent" className="text-xs shrink-0 ml-2">
+                          <Badge variant="accent" className="text-xs shrink-0">
                             {related.batch}
                           </Badge>
                         )}
