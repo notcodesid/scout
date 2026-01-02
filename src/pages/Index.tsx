@@ -5,7 +5,8 @@ import FilterSidebar from "@/components/FilterSidebar";
 import StartupGrid from "@/components/StartupGrid";
 import ComingSoon from "@/components/ComingSoon";
 import Footer from "@/components/Footer";
-import { startups } from "@/data/startups";
+import { useStartups } from "@/hooks/use-yc-startups";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -16,6 +17,10 @@ const Index = () => {
     teamSize: "all",
     founded: "all",
   });
+
+  // Fetch live YC startup data
+  const { data: startupsData, isLoading, error } = useStartups("hiring");
+  const startups = startupsData?.data || [];
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -31,25 +36,22 @@ const Index = () => {
         (startup) =>
           startup.name.toLowerCase().includes(query) ||
           startup.description.toLowerCase().includes(query) ||
-          startup.tags.some((tag) => tag.toLowerCase().includes(query)) ||
-          startup.founders.some((founder) =>
-            founder.name.toLowerCase().includes(query)
-          )
+          startup.tags.some((tag) => tag.toLowerCase().includes(query))
       );
     }
 
     // Industry filter
     if (filters.industry !== "all") {
       const industryMap: Record<string, string[]> = {
-        ai: ["AI", "Machine Learning", "Agents", "Voice AI", "MLOps"],
-        health: ["Healthcare", "Biotech", "Wearables"],
-        devtools: ["Developer Tools", "Infrastructure", "API", "Open Source"],
-        fintech: ["Fintech", "Banking"],
+        ai: ["AI", "Machine Learning", "Agents", "Voice AI", "MLOps", "Artificial Intelligence"],
+        health: ["Healthcare", "Biotech", "Wearables", "Health", "Medical"],
+        devtools: ["Developer Tools", "Infrastructure", "API", "Open Source", "DevOps"],
+        fintech: ["Fintech", "Banking", "Finance", "Financial"],
         enterprise: ["Enterprise", "B2B", "SaaS"],
         consumer: ["Consumer"],
-        hardware: ["Hardware", "Robotics", "Wearables"],
-        climate: ["Climate", "Sustainability", "Carbon Capture"],
-        security: ["Security", "Authentication"],
+        hardware: ["Hardware", "Robotics", "Wearables", "Hard Tech"],
+        climate: ["Climate", "Sustainability", "Carbon Capture", "Energy"],
+        security: ["Security", "Authentication", "Cybersecurity"],
       };
       const matchTags = industryMap[filters.industry] || [];
       result = result.filter((startup) =>
@@ -57,6 +59,8 @@ const Index = () => {
           matchTags.some((match) =>
             tag.toLowerCase().includes(match.toLowerCase())
           )
+        ) || matchTags.some((match) => 
+          startup.industry?.toLowerCase().includes(match.toLowerCase())
         )
       );
     }
@@ -64,11 +68,12 @@ const Index = () => {
     // Location filter
     if (filters.location !== "all") {
       const locationMap: Record<string, string[]> = {
-        sf: ["San Francisco", "SF", "Bay Area"],
+        sf: ["San Francisco", "SF", "Bay Area", "California"],
         nyc: ["New York", "NYC"],
-        "us-other": ["Boston", "Austin", "Seattle", "Boulder", "Cambridge"],
-        europe: ["London", "Berlin", "Paris"],
-        asia: ["Tokyo", "Singapore", "Hong Kong"],
+        "us-other": ["Boston", "Austin", "Seattle", "Boulder", "Cambridge", "Chicago", "Los Angeles"],
+        europe: ["London", "Berlin", "Paris", "United Kingdom", "Germany", "France", "Europe"],
+        asia: ["Tokyo", "Singapore", "Hong Kong", "India", "China"],
+        remote: ["Remote"],
       };
       const matchLocations = locationMap[filters.location] || [];
       result = result.filter((startup) =>
@@ -103,7 +108,7 @@ const Index = () => {
     // 'latest' is default order
 
     return result;
-  }, [searchQuery, sortBy, filters]);
+  }, [startups, searchQuery, sortBy, filters]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -117,11 +122,46 @@ const Index = () => {
           <div className="container mx-auto px-4">
             <div className="flex flex-col gap-8 lg:flex-row">
               <FilterSidebar filters={filters} onFilterChange={handleFilterChange} />
-              <StartupGrid
-                startups={filteredStartups}
-                sortBy={sortBy}
-                onSortChange={setSortBy}
-              />
+              
+              {isLoading ? (
+                <div className="flex-1">
+                  <div className="mb-6 flex items-center justify-between">
+                    <Skeleton className="h-6 w-48" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-9 w-20" />
+                      <Skeleton className="h-9 w-20" />
+                      <Skeleton className="h-9 w-24" />
+                    </div>
+                  </div>
+                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                    {Array.from({ length: 9 }).map((_, i) => (
+                      <div key={i} className="glass-card p-5">
+                        <Skeleton className="mb-3 h-6 w-3/4" />
+                        <Skeleton className="mb-2 h-4 w-full" />
+                        <Skeleton className="mb-4 h-4 w-2/3" />
+                        <div className="flex gap-2 mb-4">
+                          <Skeleton className="h-5 w-16" />
+                          <Skeleton className="h-5 w-20" />
+                        </div>
+                        <Skeleton className="h-4 w-1/2" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="flex-1 flex items-center justify-center py-20">
+                  <div className="text-center">
+                    <p className="text-destructive mb-2">Failed to load startups</p>
+                    <p className="text-muted-foreground text-sm">{error.message}</p>
+                  </div>
+                </div>
+              ) : (
+                <StartupGrid
+                  startups={filteredStartups}
+                  sortBy={sortBy}
+                  onSortChange={setSortBy}
+                />
+              )}
             </div>
           </div>
         </section>
