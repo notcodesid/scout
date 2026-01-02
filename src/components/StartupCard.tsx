@@ -15,6 +15,7 @@ export interface Startup {
   founders: { name: string; linkedin?: string }[];
   batch?: string;
   logoUrl?: string;
+  isHiring?: boolean;
 }
 
 interface StartupCardProps {
@@ -65,11 +66,18 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
                 >
                   {startup.name}
                 </Link>
-                {startup.batch && (
-                  <Badge variant="accent" className="mt-1">
-                    {startup.batch}
-                  </Badge>
-                )}
+                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                  {startup.batch && (
+                    <Badge variant="accent">
+                      {startup.batch}
+                    </Badge>
+                  )}
+                  {startup.isHiring && (
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30">
+                      Hiring
+                    </Badge>
+                  )}
+                </div>
               </div>
               <a
                 href={startup.website}
