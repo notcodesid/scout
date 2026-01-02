@@ -6,6 +6,62 @@
 
 @layer base {
   :root {
+    --background: 0 0% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --card-hover: 220 14% 96%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 24 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 24 100% 60%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 220 14% 92%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 24 90% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 24 100% 50%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(24 100% 50%) 0%, hsl(35 100% 55%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(220 14% 96%) 0%, hsl(0 0% 98%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 100%);
+    --gradient-glow: radial-gradient(ellipse 80% 50% at 50% -20%, hsl(24 100% 50% / 0.08), transparent);
+    
+    --shadow-glow: 0 0 60px hsl(24 100% 50% / 0.08);
+    --shadow-card: 0 4px 24px hsl(220 14% 50% / 0.08);
+    --shadow-card-hover: 0 8px 40px hsl(220 14% 50% / 0.12);
+
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 24 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 24 100% 50%;
+  }
+
+  .dark {
     --background: 222 47% 5%;
     --foreground: 210 40% 98%;
 
@@ -36,8 +92,6 @@
     --input: 222 30% 12%;
     --ring: 24 100% 50%;
 
-    --radius: 0.75rem;
-
     /* Custom tokens */
     --gradient-primary: linear-gradient(135deg, hsl(24 100% 50%) 0%, hsl(35 100% 55%) 100%);
     --gradient-hero: linear-gradient(180deg, hsl(222 47% 8%) 0%, hsl(222 47% 5%) 100%);
@@ -47,9 +101,6 @@
     --shadow-glow: 0 0 60px hsl(24 100% 50% / 0.1);
     --shadow-card: 0 4px 24px hsl(222 47% 0% / 0.4);
     --shadow-card-hover: 0 8px 40px hsl(222 47% 0% / 0.6);
-
-    --font-display: 'Space Grotesk', sans-serif;
-    --font-body: 'Inter', sans-serif;
 
     --sidebar-background: 222 47% 6%;
     --sidebar-foreground: 210 40% 98%;

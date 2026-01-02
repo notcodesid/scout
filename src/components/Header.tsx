@@ -1,6 +1,7 @@
 import { Rocket } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
+import { ThemeToggle } from "./ThemeToggle";
 
 const Header = () => {
   return (
@@ -37,6 +38,7 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <Link to="/apply">
             <Button variant="hero" size="sm">
               Get Emails
