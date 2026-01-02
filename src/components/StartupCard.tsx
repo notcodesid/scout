@@ -1,4 +1,5 @@
 import { ExternalLink, Linkedin, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Badge } from "./ui/badge";
 
 export interface Startup {
@@ -36,11 +37,14 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
         {/* Header */}
         <div className="mb-3 flex items-start justify-between">
           <div>
-            <h3 className="font-display text-lg font-semibold text-foreground transition-colors group-hover:text-primary">
+            <Link 
+              to={`/startup/${startup.id}`}
+              className="font-display text-lg font-semibold text-foreground transition-colors group-hover:text-primary hover:underline"
+            >
               {startup.name}
-            </h3>
+            </Link>
             {startup.batch && (
-              <Badge variant="accent" className="mt-1">
+              <Badge variant="accent" className="ml-2">
                 {startup.batch}
               </Badge>
             )}
@@ -49,6 +53,7 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
             href={startup.website}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition-all hover:bg-primary hover:text-primary-foreground"
           >
             <ExternalLink className="h-4 w-4" />
@@ -56,9 +61,11 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
         </div>
 
         {/* Description */}
-        <p className="mb-4 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
-          {startup.description}
-        </p>
+        <Link to={`/startup/${startup.id}`}>
+          <p className="mb-4 line-clamp-3 text-sm leading-relaxed text-muted-foreground hover:text-foreground transition-colors">
+            {startup.description}
+          </p>
+        </Link>
 
         {/* Tags */}
         <div className="mb-4 flex flex-wrap gap-1.5">
@@ -89,6 +96,7 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
                 href={founder.linkedin || "#"}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-1.5 rounded-md bg-secondary/50 px-2 py-1 text-xs text-foreground transition-colors hover:bg-secondary hover:text-primary"
               >
                 <Linkedin className="h-3 w-3" />
@@ -97,6 +105,14 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
             ))}
           </div>
         </div>
+
+        {/* View Details Link */}
+        <Link 
+          to={`/startup/${startup.id}`}
+          className="mt-4 block text-center text-sm font-medium text-primary hover:underline"
+        >
+          View Details →
+        </Link>
       </div>
     </article>
   );
