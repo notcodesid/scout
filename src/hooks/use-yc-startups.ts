@@ -6,6 +6,7 @@ export interface YCStartup extends Startup {
   industry?: string;
   isHiring?: boolean;
   logoUrl?: string;
+  ycUrl?: string;
 }
 
 interface FetchYCStartupsParams {
