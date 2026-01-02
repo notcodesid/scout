@@ -14,7 +14,137 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cold_email_templates: {
+        Row: {
+          body_template: string
+          category: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          subject_template: string
+          updated_at: string
+        }
+        Insert: {
+          body_template: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject_template: string
+          updated_at?: string
+        }
+        Update: {
+          body_template?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject_template?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      engineer_submissions: {
+        Row: {
+          bio: string | null
+          created_at: string
+          education: string | null
+          email: string
+          experience_years: number | null
+          full_name: string
+          github_url: string | null
+          id: string
+          linkedin_url: string | null
+          phone: string | null
+          portfolio_url: string | null
+          preferred_locations: string[] | null
+          preferred_roles: string[] | null
+          resume_url: string | null
+          skills: string[] | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          education?: string | null
+          email: string
+          experience_years?: number | null
+          full_name: string
+          github_url?: string | null
+          id?: string
+          linkedin_url?: string | null
+          phone?: string | null
+          portfolio_url?: string | null
+          preferred_locations?: string[] | null
+          preferred_roles?: string[] | null
+          resume_url?: string | null
+          skills?: string[] | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          education?: string | null
+          email?: string
+          experience_years?: number | null
+          full_name?: string
+          github_url?: string | null
+          id?: string
+          linkedin_url?: string | null
+          phone?: string | null
+          portfolio_url?: string | null
+          preferred_locations?: string[] | null
+          preferred_roles?: string[] | null
+          resume_url?: string | null
+          skills?: string[] | null
+        }
+        Relationships: []
+      }
+      generated_emails: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          sent_at: string | null
+          startup_id: string
+          startup_name: string
+          status: string | null
+          subject: string
+          submission_id: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          sent_at?: string | null
+          startup_id: string
+          startup_name: string
+          status?: string | null
+          subject: string
+          submission_id?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          sent_at?: string | null
+          startup_id?: string
+          startup_name?: string
+          status?: string | null
+          subject?: string
+          submission_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_emails_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "engineer_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
