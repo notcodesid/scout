@@ -1,6 +1,6 @@
-import { Mail, Upload, Zap, ArrowRight } from "lucide-react";
+import { Mail, Upload, Zap, ArrowRight, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 
 const ComingSoon = () => {
   return (
@@ -11,9 +11,9 @@ const ComingSoon = () => {
       <div className="container relative mx-auto px-4">
         <div className="mx-auto max-w-3xl text-center">
           {/* Badge */}
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5 text-sm text-accent">
-            <Zap className="h-4 w-4" />
-            <span>Coming Soon</span>
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm text-primary">
+            <Sparkles className="h-4 w-4" />
+            <span>Now Available</span>
           </div>
 
           <h2 className="font-display text-3xl font-bold tracking-tight md:text-5xl">
@@ -22,7 +22,7 @@ const ComingSoon = () => {
           </h2>
 
           <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
-            Upload your resume and we'll automatically send personalized cold emails to YC startups that match your skills and interests.
+            Upload your resume and we'll generate personalized cold emails to YC startups that match your skills and interests.
           </p>
 
           {/* Features */}
@@ -31,17 +31,17 @@ const ComingSoon = () => {
               {
                 icon: Upload,
                 title: "Upload Resume",
-                description: "Drop your resume and we'll analyze your skills and experience",
+                description: "Drop your resume or fill out a form with your skills and experience",
               },
               {
                 icon: Zap,
-                title: "AI Matching",
-                description: "Our AI matches you with the perfect YC startups",
+                title: "AI Personalization",
+                description: "Our AI crafts unique emails tailored to each startup",
               },
               {
                 icon: Mail,
-                title: "Auto Outreach",
-                description: "Personalized cold emails sent on your behalf",
+                title: "Get Your Emails",
+                description: "Receive personalized cold emails ready to send",
               },
             ].map((feature) => (
               <div
@@ -61,22 +61,17 @@ const ComingSoon = () => {
             ))}
           </div>
 
-          {/* Email Signup */}
-          <div className="mx-auto mt-12 max-w-md">
-            <p className="mb-4 text-sm text-muted-foreground">
-              Be the first to know when we launch
-            </p>
-            <div className="flex gap-3">
-              <Input
-                type="email"
-                placeholder="Enter your email"
-                className="flex-1"
-              />
-              <Button variant="hero" className="group shrink-0">
-                Notify Me
+          {/* CTA Button */}
+          <div className="mx-auto mt-12">
+            <Link to="/apply">
+              <Button variant="hero" size="lg" className="group">
+                Start Generating Emails
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
-            </div>
+            </Link>
+            <p className="mt-4 text-sm text-muted-foreground">
+              Free to use • No account required
+            </p>
           </div>
         </div>
       </div>

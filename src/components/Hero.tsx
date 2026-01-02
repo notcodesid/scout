@@ -1,4 +1,5 @@
-import { ArrowRight, Search, Sparkles } from "lucide-react";
+import { ArrowRight, Search, Sparkles, Mail } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
@@ -52,13 +53,18 @@ const Hero = ({ searchQuery, onSearchChange }: HeroProps) => {
 
         {/* CTA Buttons */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: "0.4s" }}>
-          <Button variant="hero" size="lg" className="group">
-            Browse Directory
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Button>
-          <Button variant="glass" size="lg">
-            Coming: Auto Cold Emails
-          </Button>
+          <a href="#directory">
+            <Button variant="hero" size="lg" className="group">
+              Browse Directory
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Button>
+          </a>
+          <Link to="/apply">
+            <Button variant="glass" size="lg" className="group">
+              <Mail className="h-4 w-4" />
+              Generate Cold Emails
+            </Button>
+          </Link>
         </div>
 
         {/* Stats */}
