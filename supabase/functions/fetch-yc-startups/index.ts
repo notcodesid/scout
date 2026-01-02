@@ -70,11 +70,12 @@ Deno.serve(async (req) => {
   try {
     const { searchParams } = new URL(req.url);
     const category = searchParams.get('category') || 'hiring';
-    const limit = parseInt(searchParams.get('limit') || '100');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
     const industry = searchParams.get('industry');
     const search = searchParams.get('search');
 
-    console.log(`Fetching YC startups: category=${category}, limit=${limit}, industry=${industry}, search=${search}`);
+    console.log(`Fetching YC startups: category=${category}, limit=${limit}, offset=${offset}, industry=${industry}, search=${search}`);
 
     // Fetch from the YC OSS API
     const apiUrl = `https://yc-oss.github.io/api/companies/${category}.json`;
@@ -115,17 +116,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Limit results
-    startups = startups.slice(0, limit);
+    // Apply pagination
+    const paginatedStartups = startups.slice(offset, offset + limit);
+    const hasMore = offset + limit < startups.length;
 
-    console.log(`Returning ${startups.length} startups`);
+    console.log(`Returning ${paginatedStartups.length} startups (offset: ${offset}, hasMore: ${hasMore})`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        data: startups,
-        total: companies.length,
-        filtered: startups.length,
+        data: paginatedStartups,
+        total: startups.length,
+        offset,
+        limit,
+        hasMore,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
