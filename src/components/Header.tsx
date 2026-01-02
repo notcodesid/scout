@@ -1,14 +1,14 @@
 import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./ThemeToggle";
-import logo from "@/assets/internatyc-logo.png";
+import logo from "@/assets/internatyc-logo-minimal.png";
 
 const Header = () => {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2">
-          <img src={logo} alt="InternAtYC" className="h-10 w-auto" />
+          <img src={logo} alt="InternAtYC" className="h-10 w-auto dark:invert" />
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
