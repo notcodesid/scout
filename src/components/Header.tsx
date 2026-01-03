@@ -4,7 +4,7 @@ import { LogOut, User, Menu, X, LayoutDashboard } from "lucide-react";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "@/hooks/use-auth";
-import logo from "@/assets/internatyc-logo.png";
+import logo from "@/assets/internatyc-icon-abstract.png";
 
 const Header = () => {
   const { user, signOut } = useAuth();
