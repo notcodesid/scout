@@ -38,6 +38,12 @@
 
     --radius: 0.75rem;
 
+    /* Footer tokens */
+    --footer: 222 47% 7%;
+    --footer-foreground: 210 40% 98%;
+    --footer-muted-foreground: 215 20% 70%;
+    --footer-border: 222 30% 18%;
+
     /* Custom tokens */
     --gradient-primary: linear-gradient(135deg, hsl(24 100% 50%) 0%, hsl(35 100% 55%) 100%);
     --gradient-hero: linear-gradient(180deg, hsl(220 14% 96%) 0%, hsl(0 0% 98%) 100%);
@@ -91,6 +97,12 @@
     --border: 222 30% 15%;
     --input: 222 30% 12%;
     --ring: 24 100% 50%;
+
+    /* Footer tokens */
+    --footer: 222 47% 6%;
+    --footer-foreground: 210 40% 98%;
+    --footer-muted-foreground: 215 20% 65%;
+    --footer-border: 222 30% 14%;
 
     /* Custom tokens */
     --gradient-primary: linear-gradient(135deg, hsl(24 100% 50%) 0%, hsl(35 100% 55%) 100%);
