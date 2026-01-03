@@ -1,68 +1,91 @@
-import { Github, Rocket, Twitter } from "lucide-react";
+import { Youtube, Twitter, Instagram, Linkedin } from "lucide-react";
+import { Link } from "react-router-dom";
+import logo from "@/assets/internatyc-logo-minimal.png";
 
 const Footer = () => {
   return (
-    <footer className="border-t border-border/50 bg-card/30 py-12">
+    <footer className="relative border-t border-border/50 bg-background overflow-hidden py-12">
       <div className="container mx-auto px-4">
-        <div className="flex flex-col items-center justify-between gap-8 md:flex-row">
+        <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-start">
           {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
-              <Rocket className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="font-display text-xl font-bold tracking-tight">
-              YCatalyst
-            </span>
+          <div className="flex items-center">
+            <img 
+              src={logo} 
+              alt="InternAtYC" 
+              className="h-8 w-auto dark:invert" 
+            />
           </div>
 
           {/* Links */}
-          <nav className="flex items-center gap-6">
-            <a
-              href="#directory"
+          <nav className="flex flex-col gap-3">
+            <Link
+              to="/terms"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Directory
-            </a>
-            <a
-              href="#about"
+              Terms & Conditions
+            </Link>
+            <Link
+              to="/privacy"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              About
-            </a>
-            <a
-              href="#coming-soon"
+              Privacy Policy
+            </Link>
+            <Link
+              to="/refund"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Coming Soon
-            </a>
+              Refund & Cancellation
+            </Link>
           </nav>
 
-          {/* Social */}
-          <div className="flex items-center gap-4">
-            <a
-              href="https://twitter.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
-            >
-              <Twitter className="h-4 w-4" />
-            </a>
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
-            >
-              <Github className="h-4 w-4" />
-            </a>
+          {/* Social & Copyright */}
+          <div className="flex flex-col items-end gap-4">
+            <div className="flex items-center gap-3">
+              <a
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+              >
+                <Youtube className="h-5 w-5" />
+              </a>
+              <a
+                href="https://twitter.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+              >
+                <Twitter className="h-5 w-5" />
+              </a>
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+              >
+                <Instagram className="h-5 w-5" />
+              </a>
+              <a
+                href="https://linkedin.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+              >
+                <Linkedin className="h-5 w-5" />
+              </a>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} InternAtYC. All rights reserved.
+            </p>
           </div>
         </div>
+      </div>
 
-        <div className="mt-8 border-t border-border/50 pt-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} YCatalyst. Not affiliated with Y Combinator.
-          </p>
-        </div>
+      {/* Large Watermark Text */}
+      <div className="absolute bottom-0 left-0 right-0 flex items-end justify-center overflow-hidden pointer-events-none select-none">
+        <span className="font-display text-[12vw] font-bold tracking-tighter text-muted-foreground/10 leading-none translate-y-[30%]">
+          InternAtYC
+        </span>
       </div>
     </footer>
   );
