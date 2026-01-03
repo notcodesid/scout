@@ -7,6 +7,9 @@ import { ThemeProvider } from "@/hooks/use-theme";
 import Index from "./pages/Index";
 import StartupDetail from "./pages/StartupDetail";
 import ApplyPage from "./pages/ApplyPage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import RefundPage from "./pages/RefundPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +25,9 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/startup/:id" element={<StartupDetail />} />
             <Route path="/apply" element={<ApplyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/refund" element={<RefundPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
