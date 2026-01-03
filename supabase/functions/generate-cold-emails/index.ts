@@ -12,10 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    const { submissionId, selectedStartups } = await req.json();
+    const { submissionId, selectedStartups, userId } = await req.json();
 
     console.log("Generating emails for submission:", submissionId);
     console.log("Selected startups:", selectedStartups?.length || 0);
+    console.log("User ID:", userId || "anonymous");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -149,7 +150,7 @@ Only output the pitch text, nothing else.`;
         .replace(/\{\{portfolio_url\}\}/g, submission.portfolio_url || "")
         .replace(/\{\{industry\}\}/g, (startup.tags || [])[0] || "tech");
 
-      // Save generated email to database
+      // Save generated email to database with user_id
       const { data: savedEmail, error: saveError } = await supabase
         .from("generated_emails")
         .insert({
@@ -159,6 +160,8 @@ Only output the pitch text, nothing else.`;
           subject: subject,
           body: body,
           status: "pending",
+          user_id: userId || null,
+          response_status: "not_sent",
         })
         .select()
         .single();

@@ -14,6 +14,7 @@ import EmailPreview from "./EmailPreview";
 import { startups, StartupFull } from "@/data/startups";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
@@ -41,6 +42,7 @@ interface GeneratedEmail {
 
 const ColdEmailForm = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [selectedStartups, setSelectedStartups] = useState<string[]>([]);
@@ -117,7 +119,7 @@ const ColdEmailForm = () => {
         }
       }
 
-      // Save engineer submission
+      // Save engineer submission with user_id if logged in
       const { data: submission, error: submissionError } = await supabase
         .from("engineer_submissions")
         .insert({
@@ -135,6 +137,7 @@ const ColdEmailForm = () => {
             ? values.preferredRoles.split(",").map((r) => r.trim())
             : [],
           bio: values.bio || null,
+          user_id: user?.id || null,
         })
         .select()
         .single();
@@ -153,6 +156,7 @@ const ColdEmailForm = () => {
           body: {
             submissionId: submission.id,
             selectedStartups: selectedStartupData,
+            userId: user?.id || null,
           },
         }
       );

@@ -64,6 +64,7 @@ export type Database = {
           preferred_roles: string[] | null
           resume_url: string | null
           skills: string[] | null
+          user_id: string | null
         }
         Insert: {
           bio?: string | null
@@ -81,6 +82,7 @@ export type Database = {
           preferred_roles?: string[] | null
           resume_url?: string | null
           skills?: string[] | null
+          user_id?: string | null
         }
         Update: {
           bio?: string | null
@@ -98,6 +100,7 @@ export type Database = {
           preferred_roles?: string[] | null
           resume_url?: string | null
           skills?: string[] | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -106,34 +109,40 @@ export type Database = {
           body: string
           created_at: string
           id: string
+          response_status: string | null
           sent_at: string | null
           startup_id: string
           startup_name: string
           status: string | null
           subject: string
           submission_id: string | null
+          user_id: string | null
         }
         Insert: {
           body: string
           created_at?: string
           id?: string
+          response_status?: string | null
           sent_at?: string | null
           startup_id: string
           startup_name: string
           status?: string | null
           subject: string
           submission_id?: string | null
+          user_id?: string | null
         }
         Update: {
           body?: string
           created_at?: string
           id?: string
+          response_status?: string | null
           sent_at?: string | null
           startup_id?: string
           startup_name?: string
           status?: string | null
           subject?: string
           submission_id?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {

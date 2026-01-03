@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import StartupDetail from "./pages/StartupDetail";
 import ApplyPage from "./pages/ApplyPage";
 import AuthPage from "./pages/AuthPage";
+import DashboardPage from "./pages/DashboardPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import RefundPage from "./pages/RefundPage";
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/startup/:id" element={<StartupDetail />} />
               <Route path="/apply" element={<ApplyPage />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/refund" element={<RefundPage />} />

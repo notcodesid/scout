@@ -1,7 +1,10 @@
-import { ExternalLink, Linkedin, Users, Building2 } from "lucide-react";
+import { ExternalLink, Linkedin, Users, Building2, Bookmark } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
 import { useState } from "react";
+import { useBookmarks } from "@/hooks/use-bookmarks";
+import { cn } from "@/lib/utils";
 
 export interface Startup {
   id: string;
@@ -25,6 +28,7 @@ interface StartupCardProps {
 
 const StartupCard = ({ startup, index }: StartupCardProps) => {
   const [logoError, setLogoError] = useState(false);
+  const { isBookmarked, toggleBookmark, loading } = useBookmarks();
 
   return (
     <article
@@ -79,15 +83,38 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
                   )}
                 </div>
               </div>
-              <a
-                href={startup.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition-all hover:bg-primary hover:text-primary-foreground"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </a>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-8 w-8 shrink-0",
+                    isBookmarked(startup.id) && "text-primary"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    toggleBookmark(startup.id);
+                  }}
+                  disabled={loading}
+                >
+                  <Bookmark
+                    className={cn(
+                      "h-4 w-4",
+                      isBookmarked(startup.id) && "fill-primary"
+                    )}
+                  />
+                </Button>
+                <a
+                  href={startup.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition-all hover:bg-primary hover:text-primary-foreground"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </div>
             </div>
           </div>
         </div>
