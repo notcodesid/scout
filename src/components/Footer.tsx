@@ -1,6 +1,5 @@
-import { Youtube, Twitter, Instagram, Linkedin } from "lucide-react";
+import { Youtube, Twitter, Instagram, Linkedin, Rocket } from "lucide-react";
 import { Link } from "react-router-dom";
-import logo from "@/assets/internatyc-logo-minimal.png";
 
 const Footer = () => {
   const year = new Date().getFullYear();
@@ -11,16 +10,18 @@ const Footer = () => {
       <div className="relative border-t border-footer-border/70">
         <div className="container mx-auto px-6 py-12">
           <div className="grid gap-10 md:grid-cols-[auto_1fr_auto] md:items-center">
-            {/* left: brand */}
-            <Link to="/" className="inline-flex items-center gap-3">
-              <img
-                src={logo}
-                alt="InternAtYC logo"
-                className="h-6 w-auto opacity-90 invert dark:invert-0"
-                loading="lazy"
-              />
-              <span className="font-display text-base tracking-tight">InternAtYC</span>
-            </Link>
+            {/* left: brand + tagline */}
+            <div className="flex flex-col gap-2">
+              <Link to="/" className="inline-flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                  <Rocket className="h-4 w-4 text-primary-foreground" />
+                </div>
+                <span className="font-display text-lg font-semibold tracking-tight">InternAtYC</span>
+              </Link>
+              <p className="text-xs text-footer-muted max-w-[200px]">
+                Your gateway to YC startup internships
+              </p>
+            </div>
 
             {/* center: links */}
             <nav
