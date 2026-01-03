@@ -7,12 +7,6 @@ const Footer = () => {
 
   return (
     <footer className="relative overflow-hidden bg-footer text-footer-foreground">
-      {/* watermark */}
-      <div className="pointer-events-none absolute inset-0 flex items-end justify-center select-none">
-        <span className="font-display text-[18vw] leading-none tracking-tight text-footer-foreground/5">
-          InternAtYC
-        </span>
-      </div>
 
       <div className="relative border-t border-footer-border/70">
         <div className="container mx-auto px-6 py-12">
