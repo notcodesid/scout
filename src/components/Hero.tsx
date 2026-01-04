@@ -1,10 +1,8 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
-
 const Hero = () => {
-  return (
-    <section className="relative overflow-hidden py-16 md:py-24 lg:py-32">
+  return <section className="relative overflow-hidden py-16 md:py-24 lg:py-32">
       {/* Background Grid Pattern */}
       <div className="pointer-events-none absolute inset-0 grid-pattern opacity-50" />
       
@@ -23,8 +21,8 @@ const Hero = () => {
 
         {/* Main Heading - Much Larger with Hand-drawn Style Highlights */}
         <h1 className="mx-auto max-w-5xl font-display text-5xl md:text-6xl lg:text-7xl xl:text-8xl tracking-tight leading-[1.05] animate-fade-in" style={{
-          animationDelay: "0.1s"
-        }}>
+        animationDelay: "0.1s"
+      }}>
           Say{" "}
           <span className="relative inline-block">
             <span className="relative z-10">hello</span>
@@ -47,15 +45,15 @@ const Hero = () => {
 
         {/* Subheading */}
         <p className="mx-auto mt-8 max-w-lg text-lg md:text-xl text-muted-foreground animate-fade-in" style={{
-          animationDelay: "0.2s"
-        }}>
+        animationDelay: "0.2s"
+      }}>
           Generate personalized cold emails that actually get responses.
         </p>
 
         {/* CTA Button */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3 animate-fade-in" style={{
-          animationDelay: "0.3s"
-        }}>
+        animationDelay: "0.3s"
+      }}>
           <Link to="/apply">
             <Button size="lg" className="rounded-full px-8 h-12 text-base font-medium gap-2">
               Get Started
@@ -65,25 +63,26 @@ const Hero = () => {
         </div>
 
         {/* Stats Row */}
-        <div className="mt-14 flex flex-wrap items-center justify-center gap-8 md:gap-14 animate-fade-in" style={{
-          animationDelay: "0.4s"
-        }}>
-          {[
-            { value: "AI-Powered", label: "Email Generation" },
-            { value: "Personalized", label: "For Each Company" },
-            { value: "Free", label: "To Start" }
-          ].map((stat) => (
-            <div key={stat.label} className="text-center">
+        <div style={{
+        animationDelay: "0.4s"
+      }} className="mt-14 flex flex-wrap items-center justify-center gap-8 animate-fade-in md:gap-[200px]">
+          {[{
+          value: "AI-Powered",
+          label: "Email Generation"
+        }, {
+          value: "Personalized",
+          label: "For Each Company"
+        }, {
+          value: "Free",
+          label: "To Start"
+        }].map(stat => <div key={stat.label} className="text-center">
               <div className="font-display text-2xl md:text-3xl text-foreground">
                 {stat.value}
               </div>
               <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
-            </div>
-          ))}
+            </div>)}
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default Hero;
