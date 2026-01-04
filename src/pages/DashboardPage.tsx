@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -51,10 +52,22 @@ const DashboardPage = () => {
     }
   }, [user, authLoading, navigate]);
 
-  if (authLoading) {
+  if (authLoading || isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8 md:py-12">
+          <div className="mb-8">
+            <h1 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+              Your <span className="text-gradient">Dashboard</span>
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              Track your applications and saved startups
+            </p>
+          </div>
+          <DashboardSkeleton />
+        </main>
+        <Footer />
       </div>
     );
   }
@@ -141,11 +154,7 @@ const DashboardPage = () => {
             </Link>
           </div>
 
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : emails.length === 0 ? (
+          {emails.length === 0 ? (
             <div className="glass-card p-8 text-center">
               <Mail className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
               <h3 className="mb-2 font-display text-lg font-semibold">
