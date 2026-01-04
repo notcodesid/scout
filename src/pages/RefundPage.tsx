@@ -17,7 +17,7 @@ const RefundPage = () => {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">1. Free Service</h2>
               <p className="text-muted-foreground">
-                InternAtYC is currently a free service. We do not charge users for accessing our platform, browsing startups, or submitting applications.
+                FounderHQ is currently a free service. We do not charge users for accessing our platform, browsing startups, or submitting applications.
               </p>
             </section>
 
@@ -45,7 +45,7 @@ const RefundPage = () => {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">5. Contact Us</h2>
               <p className="text-muted-foreground">
-                If you have any questions about our Refund & Cancellation Policy, please contact us at support@internatyc.com.
+                If you have any questions about our Refund & Cancellation Policy, please contact us at support@founderhq.site.
               </p>
             </section>
           </div>

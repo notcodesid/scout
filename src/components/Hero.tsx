@@ -26,18 +26,18 @@ const Hero = ({ searchQuery, onSearchChange, totalStartups }: HeroProps) => {
         {/* Badge */}
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 text-sm text-emerald-500 dark:text-emerald-400 animate-fade-in">
           <Briefcase className="h-4 w-4" />
-          <span>{startupCount} YC Startups Actively Hiring</span>
+          <span>{startupCount} Tech Companies Actively Hiring</span>
         </div>
 
         {/* Heading */}
         <h1 className="mx-auto max-w-4xl font-display text-4xl font-bold tracking-tight md:text-6xl lg:text-7xl animate-fade-in" style={{ animationDelay: "0.1s" }}>
-          Land Your Dream
-          <span className="text-gradient"> YC Internship</span>
+          Launch Your
+          <span className="text-gradient"> Tech Career</span>
         </h1>
 
         {/* Subheading */}
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl animate-fade-in" style={{ animationDelay: "0.2s" }}>
-          Generate personalized cold emails to YC founders. Upload your resume, pick your target companies, and get AI-crafted outreach that gets responses.
+          Generate personalized cold emails to tech founders. Upload your resume, pick your target companies, and get AI-crafted outreach that gets responses.
         </p>
 
         {/* CTA Buttons */}
@@ -78,7 +78,7 @@ const Hero = ({ searchQuery, onSearchChange, totalStartups }: HeroProps) => {
         <div className="mt-16 pt-12 border-t border-border/50 animate-fade-in" style={{ animationDelay: "0.5s" }}>
           <h2 className="font-display text-xl font-semibold mb-4 text-muted-foreground">
             <Sparkles className="inline h-5 w-5 mr-2 text-primary" />
-            Or explore the full YC directory
+            Or explore the full company directory
           </h2>
           <div className="mx-auto max-w-2xl">
             <div className="relative">
