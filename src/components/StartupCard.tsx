@@ -1,4 +1,4 @@
-import { ExternalLink, Linkedin, Users, Building2, Bookmark } from "lucide-react";
+import { ExternalLink, Linkedin, Users, Building2, Bookmark, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -32,31 +32,35 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
 
   return (
     <article
-      className="glass-card group relative overflow-hidden p-5 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+      className="glass-card group relative p-6 transition-all duration-300 hover:border-primary/30 hover-lift animate-fade-in"
       style={{
         animationDelay: `${index * 0.05}s`,
       }}
     >
       {/* Hover Glow Effect */}
-      <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-        <div className="absolute -inset-px bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
+      <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-accent/5 rounded-2xl" />
+        <div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-primary/20 via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', maskComposite: 'exclude', padding: '1px' }} />
       </div>
 
       <div className="relative">
         {/* Header with Logo */}
-        <div className="mb-3 flex items-start gap-3">
+        <div className="mb-4 flex items-start gap-4">
           {/* Company Logo */}
           <div className="shrink-0">
             {startup.logoUrl && !logoError ? (
-              <img
-                src={startup.logoUrl}
-                alt={`${startup.name} logo`}
-                className="h-10 w-10 rounded-lg bg-white/10 object-contain p-1"
-                onError={() => setLogoError(true)}
-              />
+              <div className="relative">
+                <div className="absolute -inset-1 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 opacity-0 blur transition-opacity duration-300 group-hover:opacity-100" />
+                <img
+                  src={startup.logoUrl}
+                  alt={`${startup.name} logo`}
+                  className="relative h-12 w-12 rounded-xl bg-card object-contain p-1.5 ring-1 ring-border/50"
+                  onError={() => setLogoError(true)}
+                />
+              </div>
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-                <Building2 className="h-5 w-5 text-muted-foreground" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary ring-1 ring-border/50">
+                <Building2 className="h-6 w-6 text-muted-foreground" />
               </div>
             )}
           </div>
@@ -70,26 +74,26 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
                 >
                   {startup.name}
                 </Link>
-                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                   {startup.batch && (
                     <Badge variant="accent">
                       {startup.batch}
                     </Badge>
                   )}
                   {startup.isHiring && (
-                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30">
+                    <Badge variant="success">
                       Hiring
                     </Badge>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <Button
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    "h-8 w-8 shrink-0",
-                    isBookmarked(startup.id) && "text-primary"
+                    "h-9 w-9 shrink-0 rounded-lg",
+                    isBookmarked(startup.id) && "text-primary bg-primary/10"
                   )}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -100,8 +104,8 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
                 >
                   <Bookmark
                     className={cn(
-                      "h-4 w-4",
-                      isBookmarked(startup.id) && "fill-primary"
+                      "h-4 w-4 transition-all",
+                      isBookmarked(startup.id) && "fill-primary scale-110"
                     )}
                   />
                 </Button>
@@ -110,7 +114,7 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition-all hover:bg-primary hover:text-primary-foreground"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground hover:scale-105"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </a>
@@ -121,7 +125,7 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
 
         {/* Description */}
         <Link to={`/startup/${startup.id}`}>
-          <p className="mb-4 line-clamp-3 text-sm leading-relaxed text-muted-foreground hover:text-foreground transition-colors">
+          <p className="mb-4 line-clamp-3 text-body-sm leading-relaxed text-muted-foreground hover:text-foreground transition-colors">
             {startup.description}
           </p>
         </Link>
@@ -136,18 +140,18 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
         </div>
 
         {/* Meta Info */}
-        <div className="mb-4 flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
+        <div className="mb-4 flex items-center gap-4 text-body-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
             <Users className="h-3.5 w-3.5" />
             {startup.teamSize}
           </span>
           <span>Founded: {startup.founded}</span>
-          <span>{startup.location}</span>
+          <span className="truncate">{startup.location}</span>
         </div>
 
         {/* Founders */}
-        <div className="border-t border-border/50 pt-3">
-          <p className="mb-2 text-xs font-medium text-muted-foreground">Founders</p>
+        <div className="border-t border-border/40 pt-4">
+          <p className="mb-2.5 text-body-xs font-medium text-muted-foreground">Founders</p>
           <div className="flex flex-wrap gap-2">
             {startup.founders.map((founder) => (
               <a
@@ -156,9 +160,9 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1.5 rounded-md bg-secondary/50 px-2 py-1 text-xs text-foreground transition-colors hover:bg-secondary hover:text-primary"
+                className="group/founder flex items-center gap-1.5 rounded-lg bg-secondary/60 px-3 py-1.5 text-body-xs text-foreground transition-all duration-200 hover:bg-primary/10 hover:text-primary"
               >
-                <Linkedin className="h-3 w-3" />
+                <Linkedin className="h-3.5 w-3.5 transition-transform group-hover/founder:scale-110" />
                 {founder.name}
               </a>
             ))}
@@ -168,9 +172,10 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
         {/* View Details Link */}
         <Link 
           to={`/startup/${startup.id}`}
-          className="mt-4 block text-center text-sm font-medium text-primary hover:underline"
+          className="mt-5 flex items-center justify-center gap-2 text-body-sm font-medium text-primary transition-all duration-200 hover:gap-3"
         >
-          View Details →
+          View Details
+          <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
     </article>
