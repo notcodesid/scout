@@ -489,7 +489,7 @@ const ColdEmailForm = () => {
 
             <Button
               type="button"
-              variant="hero"
+              variant="default"
               onClick={handleNext}
               disabled={isSubmitting}
               className="gap-2"

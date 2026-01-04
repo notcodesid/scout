@@ -164,7 +164,7 @@ const DashboardPage = () => {
                 Generate personalized cold emails to start reaching out to startups
               </p>
               <Link to="/apply">
-                <Button variant="hero">Generate Emails</Button>
+                <Button variant="default" className="rounded-full">Generate Emails</Button>
               </Link>
             </div>
           ) : (
