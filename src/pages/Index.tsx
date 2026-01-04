@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
+import FeatureShowcase from "@/components/FeatureShowcase";
 import Footer from "@/components/Footer";
 
 const Index = () => {
@@ -9,6 +10,7 @@ const Index = () => {
       
       <main>
         <Hero />
+        <FeatureShowcase />
       </main>
 
       <Footer />
