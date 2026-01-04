@@ -38,7 +38,7 @@ const Hero = ({
           <span className="relative inline-block">
             <span className="relative z-10">hello</span>
             {/* Hand-drawn oval highlight */}
-            <svg viewBox="0 0 200 80" preserveAspectRatio="none" className="absolute -inset-x-4 -inset-y-2 h-[calc(100%+16px)] w-[calc(100%+32px)] -rotate-1 border-4">
+            <svg viewBox="0 0 200 80" preserveAspectRatio="none" className="absolute -inset-x-4 -inset-y-2 h-[calc(100%+16px)] w-[calc(100%+32px)] -rotate-1 border-0">
               <ellipse cx="100" cy="40" rx="95" ry="35" fill="none" stroke="hsl(75 85% 60%)" strokeWidth="2" />
             </svg>
           </span>
