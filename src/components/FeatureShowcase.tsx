@@ -18,20 +18,14 @@ const FeatureShowcase = () => {
           </div>
           
           <h2 className="font-display text-3xl md:text-4xl lg:text-5xl tracking-tight mb-4 text-foreground">
+            Cold emails that{" "}
             <span className="relative inline-block">
-              <span className="relative z-10">Make outreach</span>
-              {/* Brush stroke highlight behind text */}
-              <span className="absolute inset-x-0 bottom-0 h-4 bg-highlight/40 -skew-x-2 z-0" />
-            </span>
-            <br />
-            <span className="relative inline-block mt-2">
-              <span className="relative z-10">effortlessly</span>
-              {/* Hand-drawn oval */}
-              <svg viewBox="0 0 200 80" preserveAspectRatio="none" className="absolute -inset-x-4 -inset-y-2 h-[calc(100%+16px)] w-[calc(100%+32px)] rotate-1">
-                <ellipse cx="100" cy="40" rx="95" ry="35" fill="none" stroke="hsl(75 85% 60%)" strokeWidth="2" />
+              <span className="relative z-10">actually convert</span>
+              {/* Hand-drawn underline */}
+              <svg viewBox="0 0 200 20" preserveAspectRatio="none" className="absolute -bottom-2 left-0 w-full h-4">
+                <path d="M5 10 Q50 5, 100 12 T195 8" fill="none" stroke="hsl(75 85% 60%)" strokeWidth="3" strokeLinecap="round" />
               </svg>
             </span>
-            {" "}personal
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto mt-6">
             Upload your resume, select target companies, and let AI craft personalized outreach that gets responses.
