@@ -24,7 +24,7 @@ const PrivacyPage = () => {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">2. How We Use Your Information</h2>
               <p className="text-muted-foreground">
-                We use the information we collect to provide, maintain, and improve our services, to communicate with you, and to connect you with potential internship opportunities at YC-backed startups.
+                We use the information we collect to provide, maintain, and improve our services, to communicate with you, and to connect you with potential job opportunities at tech startups.
               </p>
             </section>
 
@@ -59,7 +59,7 @@ const PrivacyPage = () => {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">7. Contact Us</h2>
               <p className="text-muted-foreground">
-                If you have any questions about this Privacy Policy, please contact us at privacy@internatyc.com.
+                If you have any questions about this Privacy Policy, please contact us at privacy@founderhq.site.
               </p>
             </section>
           </div>
