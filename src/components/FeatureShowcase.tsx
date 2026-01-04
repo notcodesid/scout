@@ -1,8 +1,6 @@
 import { Mail, Sparkles, Target, Zap } from "lucide-react";
-
 const FeatureShowcase = () => {
-  return (
-    <section className="relative py-20 md:py-32 overflow-hidden">
+  return <section className="relative py-20 md:py-32 overflow-hidden">
       {/* Background - matching hero style */}
       <div className="pointer-events-none absolute inset-0 grid-pattern opacity-50" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background via-background/98 to-background" />
@@ -10,12 +8,7 @@ const FeatureShowcase = () => {
       <div className="container relative mx-auto px-4">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-soft mb-8">
-            <span className="rounded-md bg-highlight px-2 py-0.5 text-xs font-semibold text-highlight-foreground">
-              Feature
-            </span>
-            <span className="text-muted-foreground">How It Works</span>
-          </div>
+          
           
           {/* Hand-drawn scribble */}
           <div className="flex justify-center mb-4">
@@ -47,27 +40,19 @@ const FeatureShowcase = () => {
 
         {/* Feature Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-          {[
-            {
-              icon: Target,
-              title: "Target YC Startups",
-              description: "Access our curated database of Y Combinator companies actively hiring engineers."
-            },
-            {
-              icon: Sparkles,
-              title: "AI-Personalized",
-              description: "Each email is tailored to the company's mission, tech stack, and your unique background."
-            },
-            {
-              icon: Zap,
-              title: "One-Click Generation",
-              description: "Generate dozens of personalized cold emails in seconds, not hours."
-            }
-          ].map((feature) => (
-            <div
-              key={feature.title}
-              className="group p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-all duration-300"
-            >
+          {[{
+          icon: Target,
+          title: "Target YC Startups",
+          description: "Access our curated database of Y Combinator companies actively hiring engineers."
+        }, {
+          icon: Sparkles,
+          title: "AI-Personalized",
+          description: "Each email is tailored to the company's mission, tech stack, and your unique background."
+        }, {
+          icon: Zap,
+          title: "One-Click Generation",
+          description: "Generate dozens of personalized cold emails in seconds, not hours."
+        }].map(feature => <div key={feature.title} className="group p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-all duration-300">
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
                 <feature.icon className="w-6 h-6 text-primary" />
               </div>
@@ -75,8 +60,7 @@ const FeatureShowcase = () => {
               <p className="text-muted-foreground text-sm leading-relaxed">
                 {feature.description}
               </p>
-            </div>
-          ))}
+            </div>)}
         </div>
 
         {/* Email Preview Demo */}
@@ -145,8 +129,6 @@ const FeatureShowcase = () => {
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default FeatureShowcase;
