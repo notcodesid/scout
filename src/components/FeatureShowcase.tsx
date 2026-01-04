@@ -12,7 +12,7 @@ const FeatureShowcase = () => {
           
           {/* Hand-drawn scribble */}
           <div className="flex justify-center mb-4">
-            <svg width="40" height="30" viewBox="0 0 40 30" fill="none" className="text-foreground">
+            <svg width="60" height="45" viewBox="0 0 40 30" fill="none" className="text-foreground">
               <path d="M5 25 Q10 5, 20 15 T35 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" fill="none" />
             </svg>
           </div>
