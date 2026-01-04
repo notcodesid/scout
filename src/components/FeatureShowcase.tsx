@@ -46,11 +46,11 @@ const FeatureShowcase = () => {
           icon: Zap,
           title: "One-Click Generation",
           description: "Generate dozens of personalized cold emails in seconds, not hours."
-        }].map(feature => <div key={feature.title} className="group p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-all duration-300">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <feature.icon className="w-6 h-6 text-primary" />
+        }].map(feature => <div key={feature.title} className="group p-8 rounded-3xl border border-border/60 bg-card/50 backdrop-blur-sm hover:border-primary/40 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 transition-all duration-500">
+              <div className="w-14 h-14 rounded-2xl bg-muted/80 flex items-center justify-center mb-6 group-hover:bg-primary/10 transition-all duration-300">
+                <feature.icon className="w-6 h-6 text-foreground/70 group-hover:text-primary transition-colors duration-300" />
               </div>
-              <h3 className="font-display text-xl mb-2 text-foreground">{feature.title}</h3>
+              <h3 className="font-display text-lg font-medium mb-3 text-foreground tracking-tight">{feature.title}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 {feature.description}
               </p>
