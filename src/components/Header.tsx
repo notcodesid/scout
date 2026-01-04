@@ -7,7 +7,7 @@ const Header = () => {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5">
-          <img alt="FounderHQ" className="h-8 w-8 rounded-lg" src="/lovable-uploads/b0dc46c2-d886-44d8-b6c0-a4f8bebdea37.png" />
+          
           <span className="font-display text-xl tracking-tight">founderHQ</span>
         </Link>
 
