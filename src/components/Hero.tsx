@@ -46,8 +46,9 @@ const Hero = ({ searchQuery, onSearchChange, totalStartups }: HeroProps) => {
                 cy="40"
                 rx="95"
                 ry="35"
-                fill="hsl(75 85% 60% / 0.5)"
-                stroke="none"
+                fill="none"
+                stroke="hsl(75 85% 60%)"
+                strokeWidth="2"
               />
             </svg>
           </span>
