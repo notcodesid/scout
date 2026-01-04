@@ -4,7 +4,7 @@ import { LogOut, User, Menu, X, LayoutDashboard } from "lucide-react";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "@/hooks/use-auth";
-import { Building2 } from "lucide-react";
+import founderHqLogo from "@/assets/internatyc-icon-abstract.png";
 
 const Header = () => {
   const { user, signOut } = useAuth();
@@ -13,10 +13,12 @@ const Header = () => {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80">
-            <Building2 className="h-5 w-5 text-primary-foreground" />
-          </div>
+        <Link to="/" className="flex items-center gap-2.5">
+          <img 
+            src={founderHqLogo} 
+            alt="FounderHQ" 
+            className="h-8 w-8 rounded-lg"
+          />
           <span className="font-display text-xl font-bold tracking-tight">FounderHQ</span>
         </Link>
 
