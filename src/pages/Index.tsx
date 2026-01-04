@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import FilterSidebar from "@/components/FilterSidebar";
 import StartupGrid from "@/components/StartupGrid";
+import StartupCardSkeleton from "@/components/StartupCardSkeleton";
 import ComingSoon from "@/components/ComingSoon";
 import Footer from "@/components/Footer";
 import { useInfiniteStartups, flattenStartups } from "@/hooks/use-yc-startups";
@@ -150,19 +151,8 @@ const Index = () => {
                       <Skeleton className="h-9 w-24" />
                     </div>
                   </div>
-                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                    {Array.from({ length: 9 }).map((_, i) => (
-                      <div key={i} className="glass-card p-5">
-                        <Skeleton className="mb-3 h-6 w-3/4" />
-                        <Skeleton className="mb-2 h-4 w-full" />
-                        <Skeleton className="mb-4 h-4 w-2/3" />
-                        <div className="flex gap-2 mb-4">
-                          <Skeleton className="h-5 w-16" />
-                          <Skeleton className="h-5 w-20" />
-                        </div>
-                        <Skeleton className="h-4 w-1/2" />
-                      </div>
-                    ))}
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <StartupCardSkeleton count={9} />
                   </div>
                 </div>
               ) : error ? (
