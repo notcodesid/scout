@@ -17,7 +17,7 @@ const FeatureShowcase = () => {
             </svg>
           </div>
           
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl tracking-tight mb-4 text-foreground">
+          <h2 className="font-display font-semibold text-3xl md:text-4xl lg:text-5xl tracking-tight mb-4 text-foreground">
             Cold emails that{" "}
             <span className="relative inline-block">
               <span className="relative z-10">actually convert</span>
