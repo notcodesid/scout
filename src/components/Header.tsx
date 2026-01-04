@@ -51,41 +51,27 @@ const Header = () => {
           </Link>
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <ThemeToggle />
           
-          {/* Desktop Auth Buttons */}
-          <div className="hidden md:flex md:items-center md:gap-2">
-            {user ? (
-              <>
-                <Link to="/dashboard">
-                  <Button variant="ghost" size="icon" className="rounded-full" title="Dashboard">
-                    <LayoutDashboard className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={signOut}
-                  title="Sign out"
-                  className="rounded-full"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </>
-            ) : (
-              <>
-                <Link to="/auth">
-                  <Button variant="ghost" size="sm" className="rounded-full text-sm font-medium">
-                    Try for free
-                  </Button>
-                </Link>
-                <Link to="/auth">
-                  <Button variant="default" size="sm" className="rounded-full text-sm font-medium px-5">
-                    Get a demo
-                  </Button>
-                </Link>
-              </>
+          {/* Desktop Auth */}
+          <div className="hidden md:flex md:items-center md:gap-1">
+            <Link to="/dashboard">
+              <Button variant="ghost" size="sm" className="rounded-full gap-2">
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </Button>
+            </Link>
+            {user && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={signOut}
+                title="Sign out"
+                className="rounded-full"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             )}
           </div>
 
