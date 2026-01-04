@@ -64,7 +64,7 @@ const StartupDetail = () => {
           <h1 className="font-display text-3xl font-bold">Startup Not Found</h1>
           <p className="mt-4 text-muted-foreground">The startup you're looking for doesn't exist.</p>
           <Link to="/">
-            <Button variant="hero" className="mt-8">
+            <Button variant="default" className="mt-8 rounded-full">
               <ArrowLeft className="h-4 w-4" />
               Back to Directory
             </Button>
@@ -128,7 +128,7 @@ const StartupDetail = () => {
                   </div>
                 </div>
                 <a href={startup.website} target="_blank" rel="noopener noreferrer">
-                  <Button variant="hero" size="lg">
+                  <Button variant="default" size="lg" className="rounded-full">
                     Visit Website
                     <ExternalLink className="h-4 w-4" />
                   </Button>

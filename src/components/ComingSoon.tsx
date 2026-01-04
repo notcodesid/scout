@@ -64,7 +64,7 @@ const ComingSoon = () => {
           {/* CTA Button */}
           <div className="mx-auto mt-12">
             <Link to="/apply">
-              <Button variant="hero" size="lg" className="group">
+              <Button variant="default" size="lg" className="group rounded-full">
                 Start Generating Emails
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>

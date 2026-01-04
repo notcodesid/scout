@@ -19,14 +19,14 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["Sora", "sans-serif"],
-        body: ["Outfit", "sans-serif"],
+        display: ["Instrument Serif", "serif"],
+        body: ["Inter", "sans-serif"],
       },
       fontSize: {
-        "display-xl": ["4.5rem", { lineHeight: "1.1", letterSpacing: "-0.02em" }],
-        "display-lg": ["3.75rem", { lineHeight: "1.1", letterSpacing: "-0.02em" }],
-        "display-md": ["3rem", { lineHeight: "1.15", letterSpacing: "-0.02em" }],
-        "display-sm": ["2.25rem", { lineHeight: "1.2", letterSpacing: "-0.01em" }],
+        "display-xl": ["5rem", { lineHeight: "1.05", letterSpacing: "-0.02em" }],
+        "display-lg": ["4rem", { lineHeight: "1.08", letterSpacing: "-0.02em" }],
+        "display-md": ["3rem", { lineHeight: "1.1", letterSpacing: "-0.01em" }],
+        "display-sm": ["2.25rem", { lineHeight: "1.15", letterSpacing: "-0.01em" }],
         "body-xl": ["1.25rem", { lineHeight: "1.6" }],
         "body-lg": ["1.125rem", { lineHeight: "1.6" }],
         "body-md": ["1rem", { lineHeight: "1.6" }],
@@ -44,6 +44,10 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        highlight: {
+          DEFAULT: "hsl(var(--highlight))",
+          foreground: "hsl(var(--highlight-foreground))",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -98,6 +102,7 @@ export default {
       borderRadius: {
         "2xl": "1rem",
         "3xl": "1.5rem",
+        "4xl": "2rem",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
@@ -107,7 +112,8 @@ export default {
         card: "var(--shadow-card)",
         "card-hover": "var(--shadow-card-hover)",
         elevated: "var(--shadow-elevated)",
-        "inner-glow": "inset 0 1px 0 0 hsl(var(--primary) / 0.1)",
+        "inner-glow": "inset 0 1px 0 0 hsl(var(--highlight) / 0.1)",
+        "soft": "0 2px 8px hsl(220 20% 50% / 0.06)",
       },
       backdropBlur: {
         xs: "2px",
@@ -124,7 +130,7 @@ export default {
           to: { height: "0" },
         },
         "fade-in": {
-          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "0%": { opacity: "0", transform: "translateY(16px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
         "fade-in-up": {
@@ -144,7 +150,7 @@ export default {
           "100%": { opacity: "1", transform: "translateX(0)" },
         },
         "scale-in": {
-          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "0%": { opacity: "0", transform: "scale(0.96)" },
           "100%": { opacity: "1", transform: "scale(1)" },
         },
         "scale-in-bounce": {
@@ -180,9 +186,6 @@ export default {
           from: { transform: "rotate(0deg)" },
           to: { transform: "rotate(360deg)" },
         },
-        "border-beam": {
-          "100%": { "offset-distance": "100%" },
-        },
         ripple: {
           "0%": { transform: "scale(0)", opacity: "1" },
           "100%": { transform: "scale(4)", opacity: "0" },
@@ -191,8 +194,8 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.5s ease-out forwards",
-        "fade-in-up": "fade-in-up 0.6s ease-out forwards",
+        "fade-in": "fade-in 0.6s ease-out forwards",
+        "fade-in-up": "fade-in-up 0.7s ease-out forwards",
         "fade-in-down": "fade-in-down 0.5s ease-out forwards",
         "fade-in-left": "fade-in-left 0.5s ease-out forwards",
         "fade-in-right": "fade-in-right 0.5s ease-out forwards",
@@ -205,15 +208,12 @@ export default {
         "float-delayed": "float-delayed 5s ease-in-out infinite",
         "bounce-subtle": "bounce-subtle 0.4s ease-out",
         "spin-slow": "spin-slow 12s linear infinite",
-        "border-beam": "border-beam calc(var(--duration)*1s) infinite linear",
         ripple: "ripple 0.6s linear",
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-        "hero-pattern": "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.015'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
-        "grid-pattern": "linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px)",
-        "noise": "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
+        "grid-pattern": "linear-gradient(hsl(var(--border) / 0.4) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border) / 0.4) 1px, transparent 1px)",
       },
       transitionTimingFunction: {
         "bounce-in": "cubic-bezier(0.68, -0.55, 0.265, 1.55)",
