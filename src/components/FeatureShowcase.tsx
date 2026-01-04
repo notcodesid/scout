@@ -10,22 +10,37 @@ const FeatureShowcase = () => {
       <div className="container relative mx-auto px-4">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card text-sm font-medium text-foreground shadow-soft mb-6">
+          <div className="inline-flex items-center gap-2.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-soft mb-8">
             <span className="rounded-md bg-highlight px-2 py-0.5 text-xs font-semibold text-highlight-foreground">
               Feature
             </span>
             <span className="text-muted-foreground">How It Works</span>
-          </span>
+          </div>
+          
+          {/* Hand-drawn scribble */}
+          <div className="flex justify-center mb-4">
+            <svg width="40" height="30" viewBox="0 0 40 30" fill="none" className="text-foreground">
+              <path d="M5 25 Q10 5, 20 15 T35 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+            </svg>
+          </div>
+          
           <h2 className="font-display text-3xl md:text-4xl lg:text-5xl tracking-tight mb-4 text-foreground">
-            Cold emails that{" "}
             <span className="relative inline-block">
-              <span className="relative z-10">actually convert</span>
-              <svg className="absolute -bottom-2 left-0 h-3 w-full" viewBox="0 0 200 20" preserveAspectRatio="none">
-                <path d="M 5 12 Q 50 5, 100 12 T 195 12" fill="none" stroke="hsl(75 85% 60%)" strokeWidth="6" strokeLinecap="round" />
+              <span className="relative z-10">Make outreach</span>
+              {/* Brush stroke highlight behind text */}
+              <span className="absolute inset-x-0 bottom-0 h-4 bg-highlight/40 -skew-x-2 z-0" />
+            </span>
+            <br />
+            <span className="relative inline-block mt-2">
+              <span className="relative z-10">effortlessly</span>
+              {/* Hand-drawn oval */}
+              <svg viewBox="0 0 200 80" preserveAspectRatio="none" className="absolute -inset-x-4 -inset-y-2 h-[calc(100%+16px)] w-[calc(100%+32px)] rotate-1">
+                <ellipse cx="100" cy="40" rx="95" ry="35" fill="none" stroke="hsl(75 85% 60%)" strokeWidth="2" />
               </svg>
             </span>
+            {" "}personal
           </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto mt-6">
             Upload your resume, select target companies, and let AI craft personalized outreach that gets responses.
           </p>
         </div>
