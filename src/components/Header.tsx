@@ -26,22 +26,10 @@ const Header = () => {
         {/* Desktop Nav */}
         <nav className="hidden items-center gap-8 md:flex">
           <Link
-            to="/#directory"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            About
-          </Link>
-          <Link
             to="/apply"
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Feature
-          </Link>
-          <Link
-            to="/#directory"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Pricing
           </Link>
           <Link
             to="/dashboard"
@@ -96,25 +84,11 @@ const Header = () => {
         <div className="border-t border-border/40 bg-background md:hidden animate-fade-in">
           <nav className="container mx-auto flex flex-col gap-1 px-4 py-4">
             <Link
-              to="/#directory"
-              onClick={() => setMobileMenuOpen(false)}
-              className="rounded-xl px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            >
-              About
-            </Link>
-            <Link
               to="/apply"
               onClick={() => setMobileMenuOpen(false)}
               className="rounded-xl px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               Feature
-            </Link>
-            <Link
-              to="/#directory"
-              onClick={() => setMobileMenuOpen(false)}
-              className="rounded-xl px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            >
-              Pricing
             </Link>
             {user && (
               <Link
