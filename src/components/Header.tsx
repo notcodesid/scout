@@ -43,14 +43,12 @@ const Header = () => {
           >
             Pricing
           </Link>
-          {user && (
-            <Link
-              to="/dashboard"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Dashboard
-            </Link>
-          )}
+          <Link
+            to="/dashboard"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Dashboard
+          </Link>
         </nav>
 
         <div className="flex items-center gap-3">
@@ -61,9 +59,8 @@ const Header = () => {
             {user ? (
               <>
                 <Link to="/dashboard">
-                  <Button variant="ghost" size="sm" className="rounded-full">
-                    <LayoutDashboard className="h-4 w-4 mr-2" />
-                    Dashboard
+                  <Button variant="ghost" size="icon" className="rounded-full" title="Dashboard">
+                    <LayoutDashboard className="h-4 w-4" />
                   </Button>
                 </Link>
                 <Button
