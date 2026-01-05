@@ -1,73 +1,85 @@
-# Welcome to your Lovable project
+# FounderHQ 🚀
 
-## Project info
+FounderHQ is an early-stage project that helps engineers discover Y Combinator startups and reach out to founders with highly personalized cold emails — all from one place.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+The goal is simple: reduce randomness in cold outreach and help engineers connect with founders in a more thoughtful, targeted way.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## Problem
 
-**Use Lovable**
+Getting an internship at a YC startup is harder than it should be.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- Startup information is scattered across multiple platforms
+- Cold emails require significant research and personalization
+- Generic outreach has low response rates
+- Founders often receive irrelevant or low-quality applications
 
-Changes made via Lovable will be committed automatically to this repo.
+This creates friction on both sides.
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Solution
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+FounderHQ solves this by combining **startup discovery** with **intent-based, personalized outreach**.
 
-Follow these steps:
+- Browse YC startups with structured company information
+- Engineers explicitly choose which startups they want to apply to
+- Cold emails are generated with context (company, role, and resume)
+- Outreach is **targeted, not broadcasted**
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Quality over volume is the core principle.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+## How Response Rate Is Handled
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+FounderHQ focuses on improving response rates through:
 
-**Edit a file directly in GitHub**
+- Highly personalized emails instead of mass outreach
+- Clear intent signaling (engineers select specific startups)
+- Continuous iteration based on open and reply signals (future)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Early versions prioritize low volume and high relevance to avoid spam.
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Resume Filtering Philosophy
 
-## What technologies are used for this project?
+Resumes are not blindly shared.
 
-This project is built with:
+- Founders only receive applications from engineers who selected their company
+- Outreach is role-specific and skill-aware
+- Initial filtering is done by relevance, not automation
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+As the product evolves, lightweight filters (role, skills, availability) can be added to help founders quickly assess fit.
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Current Status
 
-## Can I connect a custom domain to my Lovable project?
+FounderHQ is currently in **active development** and experimentation.
 
-Yes, you can!
+- Early UI and data pipelines are in place
+- Outreach flows are being tested manually
+- Feedback-driven iteration is the main focus
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+This is not a finished product — it is an experiment built in public.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+---
+
+## Vision
+
+FounderHQ aims to become the place where:
+
+- Engineers discover founder-led opportunities
+- Founders receive fewer but better applications
+- Cold outreach becomes intentional, human, and effective
+
+---
+
+## Disclaimer
+
+FounderHQ is an independent project and is **not affiliated with Y Combinator**.
+
+YC and Y Combinator are trademarks of their respective owners.
