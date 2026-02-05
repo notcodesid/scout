@@ -1,6 +1,6 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
-import { Home, Search, ArrowLeft, Compass } from "lucide-react";
+import { Home, ArrowLeft, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import founderHqLogo from "@/assets/internatyc-icon-abstract.png";
 
@@ -49,7 +49,7 @@ const NotFound = () => {
             </Link>
           </Button>
           <Button asChild variant="outline" size="lg">
-            <Link to="/dashboard">
+            <Link to="/#directory">
               <Compass className="mr-2 h-4 w-4" />
               Explore Startups
             </Link>

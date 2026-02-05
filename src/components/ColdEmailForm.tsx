@@ -11,10 +11,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import ResumeUpload from "./ResumeUpload";
 import StartupSelector from "./StartupSelector";
 import EmailPreview from "./EmailPreview";
-import { startups, StartupFull } from "@/data/startups";
+import { startups } from "@/data/startups";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
@@ -40,9 +39,18 @@ interface GeneratedEmail {
   body: string;
 }
 
+const generateUuid = () => {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  // RFC 4122 version 4
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+};
+
 const ColdEmailForm = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [selectedStartups, setSelectedStartups] = useState<string[]>([]);
@@ -101,6 +109,7 @@ const ColdEmailForm = () => {
     const values = form.getValues();
 
     try {
+      const submissionId = generateUuid();
       // Upload resume if provided
       let resumeUrl = null;
       if (resumeFile) {
@@ -119,10 +128,11 @@ const ColdEmailForm = () => {
         }
       }
 
-      // Save engineer submission with user_id if logged in
-      const { data: submission, error: submissionError } = await supabase
+      // Save engineer submission
+      const { error: submissionError } = await supabase
         .from("engineer_submissions")
         .insert({
+          id: submissionId,
           full_name: values.fullName,
           email: values.email,
           phone: values.phone || null,
@@ -137,26 +147,24 @@ const ColdEmailForm = () => {
             ? values.preferredRoles.split(",").map((r) => r.trim())
             : [],
           bio: values.bio || null,
-          user_id: user?.id || null,
-        })
-        .select()
-        .single();
+          user_id: null,
+        });
 
       if (submissionError) {
         console.error("Submission error:", submissionError);
         throw new Error("Failed to save your information");
       }
 
-      setSubmissionId(submission.id);
+      setSubmissionId(submissionId);
 
       // Generate cold emails
       const { data: emailData, error: emailError } = await supabase.functions.invoke(
         "generate-cold-emails",
         {
           body: {
-            submissionId: submission.id,
+            submissionId: submissionId,
             selectedStartups: selectedStartupData,
-            userId: user?.id || null,
+            userId: null,
           },
         }
       );

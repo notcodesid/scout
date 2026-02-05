@@ -56,32 +56,12 @@ const Hero = () => {
       }}>
           <Link to="/apply">
             <Button size="lg" className="rounded-full px-8 h-12 text-base font-medium gap-2">
-              Get Started
+              Get Started for free
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>
 
-        {/* Stats Row */}
-        <div style={{
-        animationDelay: "0.4s"
-      }} className="mt-14 flex flex-wrap items-center justify-center gap-8 animate-fade-in md:gap-[200px]">
-          {[{
-          value: "AI-Powered",
-          label: "Email Generation"
-        }, {
-          value: "Personalized",
-          label: "For Each Company"
-        }, {
-          value: "Free",
-          label: "To Start"
-        }].map(stat => <div key={stat.label} className="text-center">
-              <div className="font-display text-2xl md:text-3xl text-foreground">
-                {stat.value}
-              </div>
-              <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
-            </div>)}
-        </div>
       </div>
     </section>;
 };

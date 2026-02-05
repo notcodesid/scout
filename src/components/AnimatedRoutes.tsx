@@ -4,8 +4,6 @@ import PageTransition from './PageTransition';
 import Index from '@/pages/Index';
 import StartupDetail from '@/pages/StartupDetail';
 import ApplyPage from '@/pages/ApplyPage';
-import AuthPage from '@/pages/AuthPage';
-import DashboardPage from '@/pages/DashboardPage';
 import TermsPage from '@/pages/TermsPage';
 import PrivacyPage from '@/pages/PrivacyPage';
 import RefundPage from '@/pages/RefundPage';
@@ -20,8 +18,6 @@ const AnimatedRoutes = () => {
         <Route path="/" element={<PageTransition><Index /></PageTransition>} />
         <Route path="/startup/:id" element={<PageTransition><StartupDetail /></PageTransition>} />
         <Route path="/apply" element={<PageTransition><ApplyPage /></PageTransition>} />
-        <Route path="/auth" element={<PageTransition><AuthPage /></PageTransition>} />
-        <Route path="/dashboard" element={<PageTransition><DashboardPage /></PageTransition>} />
         <Route path="/terms" element={<PageTransition><TermsPage /></PageTransition>} />
         <Route path="/privacy" element={<PageTransition><PrivacyPage /></PageTransition>} />
         <Route path="/refund" element={<PageTransition><RefundPage /></PageTransition>} />

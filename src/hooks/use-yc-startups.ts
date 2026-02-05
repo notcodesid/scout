@@ -81,13 +81,13 @@ export function useYCStartups(params: FetchYCStartupsParams = {}) {
 
 // Infinite query hook for paginated loading
 export function useInfiniteStartups(
-  category: "hiring" | "all" | "top" = "hiring",
-  pageSize: number = 50
+  params: Omit<FetchYCStartupsParams, "limit" | "offset"> = {},
+  pageSize: number = 18
 ) {
   return useInfiniteQuery({
-    queryKey: ["yc-startups-infinite", category, pageSize],
+    queryKey: ["yc-startups-infinite", params, pageSize],
     queryFn: ({ pageParam = 0 }) =>
-      fetchYCStartups({ category, limit: pageSize, offset: pageParam }),
+      fetchYCStartups({ ...params, limit: pageSize, offset: pageParam as number }),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {
       if (lastPage.hasMore) {
