@@ -213,21 +213,19 @@ const ColdEmailForm = () => {
         {[1, 2, 3].map((s) => (
           <div key={s} className="flex items-center">
             <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors ${
-                s < step
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors ${s < step
                   ? "bg-primary text-primary-foreground"
                   : s === step
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-muted-foreground"
-              }`}
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground"
+                }`}
             >
               {s < step ? <CheckCircle className="h-4 w-4" /> : s}
             </div>
             {s < 3 && (
               <div
-                className={`h-0.5 w-12 ${
-                  s < step ? "bg-primary" : "bg-secondary"
-                }`}
+                className={`h-0.5 w-12 ${s < step ? "bg-primary" : "bg-secondary"
+                  }`}
               />
             )}
           </div>
@@ -489,7 +487,7 @@ const ColdEmailForm = () => {
               variant="ghost"
               onClick={handleBack}
               disabled={step === 1}
-              className="gap-2"
+              className={`gap-2 ${step === 1 ? "invisible" : ""}`}
             >
               <ArrowLeft className="h-4 w-4" />
               Back

@@ -8,7 +8,7 @@ const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-lg border-b border-border/40">
+    <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-lg">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5">
@@ -19,8 +19,7 @@ const Header = () => {
         <div className="hidden md:flex items-center gap-4">
           <Link to="/apply">
             <Button variant="default" size="sm" className="rounded-full px-5 gap-2">
-              Get Started for free
-              <ArrowRight className="h-4 w-4" />
+              Generate
             </Button>
           </Link>
         </div>
@@ -59,7 +58,7 @@ const Header = () => {
                 <div className="pt-4">
                   <Link to="/apply" onClick={() => setIsOpen(false)}>
                     <Button className="w-full rounded-full" size="lg">
-                      Get Started for free
+                      Generate
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>

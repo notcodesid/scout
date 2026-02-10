@@ -10,15 +10,6 @@ const ApplyPage = () => {
       <Header />
 
       <main className="container mx-auto px-4 py-8 md:py-12">
-        {/* Back Link */}
-        <Link
-          to="/"
-          className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Directory
-        </Link>
-
         {/* Hero */}
         <section className="mb-12 text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm text-primary">

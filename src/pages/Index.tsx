@@ -8,6 +8,7 @@ import StartupGrid from "@/components/StartupGrid";
 import FilterSidebar from "@/components/FilterSidebar";
 import { useInfiniteStartups, flattenStartups } from "@/hooks/use-yc-startups";
 import { Input } from "@/components/ui/input";
+import FeatureEmailPreview from "@/components/FeatureEmailPreview";
 
 const Index = () => {
   const [search, setSearch] = useState("");
@@ -45,6 +46,7 @@ const Index = () => {
 
       <main>
         <Hero />
+        <FeatureEmailPreview />
         <FeatureShowcase />
 
         {/* Directory Section */}

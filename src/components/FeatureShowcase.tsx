@@ -1,4 +1,5 @@
-import { ArrowRight, Mail, Sparkles } from "lucide-react";
+import FeatureEmailPreview from "./FeatureEmailPreview";
+import FeatureGrid from "./FeatureGrid";
 const FeatureShowcase = () => {
   return <section className="relative py-20 md:py-32 overflow-hidden">
     {/* Background - matching hero style */}
@@ -33,96 +34,9 @@ const FeatureShowcase = () => {
       </div>
 
       {/* Feature Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-        {[{
-          title: "Startups",
-          description: "Access our curated database of Y Combinator companies actively hiring engineers."
-        }, {
-          title: "Mid-size",
-          description: "Each email is tailored to the company's mission, tech stack, and your unique background."
-        }, {
-          title: "Enterprise",
-          description: "Generate dozens of personalized cold emails in seconds, not hours."
-        }].map(feature => (
-          <div key={feature.title} className="group p-10 rounded-[2rem] border border-black/5 bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-500 ease-out flex flex-col justify-between min-h-[400px]">
-            <div className="flex justify-between items-start">
-              <h3 className="font-display text-5xl font-medium text-foreground tracking-tight">{feature.title}</h3>
-              <div className="w-12 h-12 rounded-full border border-border flex items-center justify-center group-hover:bg-foreground group-hover:text-background transition-all duration-500">
-                <ArrowRight className="w-5 h-5" />
-              </div>
-            </div>
-            <p className="text-muted-foreground text-lg leading-relaxed max-w-[90%]">
-              {feature.description}
-            </p>
-          </div>
-        ))}
-      </div>
+      <FeatureGrid />
 
-      {/* Email Preview Demo */}
-      <div className="relative max-w-4xl mx-auto">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/10 blur-3xl opacity-50 rounded-3xl" />
 
-        <div className="relative bg-card border border-border rounded-2xl overflow-hidden shadow-xl">
-          {/* Email Header */}
-          <div className="flex items-center gap-3 px-6 py-4 border-b border-border bg-muted/50">
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-500/60" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
-              <div className="w-3 h-3 rounded-full bg-green-500/60" />
-            </div>
-            <div className="flex-1 flex items-center gap-2 text-sm text-muted-foreground">
-              <Mail className="w-4 h-4" />
-              <span>New Cold Email</span>
-            </div>
-          </div>
-
-          {/* Email Content */}
-          <div className="p-6 md:p-8 space-y-4">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">To:</span>
-              <span className="text-foreground">hiring@stripe.com</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Subject:</span>
-              <span className="font-medium text-foreground">
-                Full-Stack Engineer passionate about developer tools
-              </span>
-            </div>
-
-            <div className="pt-4 border-t border-border/50">
-              <div className="space-y-3">
-                <p className="text-foreground leading-relaxed">
-                  Hi Patrick,
-                </p>
-                <p className="text-muted-foreground leading-relaxed">
-                  I've been following Stripe's journey since you launched Stripe Atlas, and as someone who's built
-                  payment integrations for 3 startups, I genuinely appreciate how you've made complex financial
-                  infrastructure feel simple.
-                </p>
-                <p className="text-muted-foreground leading-relaxed">
-                  At my current role at <span className="text-primary font-medium">[Previous Company]</span>, I led the migration
-                  to your new Payment Intents API, reducing checkout abandonment by 23%. I'd love to bring that
-                  same customer-obsessed engineering approach to your team.
-                </p>
-                <p className="text-muted-foreground leading-relaxed">
-                  Would you be open to a quick chat this week?
-                </p>
-                <p className="text-muted-foreground mt-6">
-                  — <span className="text-primary font-medium">[Your Name]</span>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Generated Badge */}
-          <div className="absolute top-4 right-4">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-medium text-primary">
-              <Sparkles className="w-3 h-3" />
-              AI Generated
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </section>;
 };
