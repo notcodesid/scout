@@ -6,7 +6,6 @@ import { ArrowRight, ArrowLeft, Loader2, Sparkles, CheckCircle } from "lucide-re
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-import { Badge } from "./ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
 import ResumeUpload from "./ResumeUpload";
 import StartupSelector from "./StartupSelector";
@@ -22,7 +21,7 @@ const formSchema = z.object({
   linkedinUrl: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
   githubUrl: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
   portfolioUrl: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
-  skills: z.string().min(1, "Please enter at least one skill"),
+  skills: z.string().optional(),
   experienceYears: z.string().optional(),
   education: z.string().optional(),
   preferredRoles: z.string().optional(),
@@ -39,6 +38,8 @@ interface GeneratedEmail {
   body: string;
 }
 
+type InputMethod = "resume" | "manual";
+
 const generateUuid = () => {
   if (crypto.randomUUID) return crypto.randomUUID();
   const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -52,6 +53,7 @@ const generateUuid = () => {
 const ColdEmailForm = () => {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
+  const [inputMethod, setInputMethod] = useState<InputMethod>("resume");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [selectedStartups, setSelectedStartups] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,10 +83,46 @@ const ColdEmailForm = () => {
 
   const handleNext = async () => {
     if (step === 1) {
-      const isValid = await form.trigger();
-      if (isValid) {
-        setStep(2);
+      const isContactValid = await form.trigger(["fullName", "email"]);
+      if (!isContactValid) {
+        return;
       }
+
+      if (inputMethod === "resume") {
+        if (!resumeFile) {
+          toast({
+            title: "Resume required",
+            description: "Upload your resume, or switch to Fill Manually.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else {
+        const isManualValid = await form.trigger([
+          "skills",
+          "experienceYears",
+          "education",
+          "preferredRoles",
+          "linkedinUrl",
+          "githubUrl",
+          "portfolioUrl",
+          "bio",
+        ]);
+        if (!isManualValid) {
+          return;
+        }
+
+        const skills = (form.getValues("skills") || "").trim();
+        if (!skills) {
+          form.setError("skills", {
+            type: "manual",
+            message: "Please enter at least one skill",
+          });
+          return;
+        }
+      }
+
+      setStep(2);
     } else if (step === 2) {
       if (selectedStartups.length === 0) {
         toast({
@@ -107,6 +145,12 @@ const ColdEmailForm = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     const values = form.getValues();
+    const parsedSkills = values.skills
+      ? values.skills.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
+    const parsedPreferredRoles = values.preferredRoles
+      ? values.preferredRoles.split(",").map((r) => r.trim()).filter(Boolean)
+      : [];
 
     try {
       const submissionId = generateUuid();
@@ -140,12 +184,10 @@ const ColdEmailForm = () => {
           github_url: values.githubUrl || null,
           portfolio_url: values.portfolioUrl || null,
           resume_url: resumeUrl,
-          skills: values.skills.split(",").map((s) => s.trim()),
+          skills: parsedSkills,
           experience_years: values.experienceYears ? parseInt(values.experienceYears) : 0,
           education: values.education || null,
-          preferred_roles: values.preferredRoles
-            ? values.preferredRoles.split(",").map((r) => r.trim())
-            : [],
+          preferred_roles: parsedPreferredRoles,
           bio: values.bio || null,
           user_id: null,
         });
@@ -199,6 +241,7 @@ const ColdEmailForm = () => {
 
   const handleStartOver = () => {
     setStep(1);
+    setInputMethod("resume");
     setSelectedStartups([]);
     setGeneratedEmails([]);
     setSubmissionId(null);
@@ -255,17 +298,27 @@ const ColdEmailForm = () => {
                   Tell us about yourself
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  This information helps us personalize your cold emails
+                  Choose one: upload your resume or fill details manually.
                 </p>
               </div>
 
-              {/* Resume Upload */}
-              <div>
-                <p className="mb-2 text-sm font-medium">Resume (Optional)</p>
-                <ResumeUpload
-                  selectedFile={resumeFile}
-                  onFileSelect={setResumeFile}
-                />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  variant={inputMethod === "resume" ? "default" : "outline"}
+                  onClick={() => setInputMethod("resume")}
+                  className="h-11"
+                >
+                  Upload Resume
+                </Button>
+                <Button
+                  type="button"
+                  variant={inputMethod === "manual" ? "default" : "outline"}
+                  onClick={() => setInputMethod("manual")}
+                  className="h-11"
+                >
+                  Fill Manually
+                </Button>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -302,134 +355,146 @@ const ColdEmailForm = () => {
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="skills"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Skills * (comma-separated)</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="React, TypeScript, Python, Machine Learning"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {inputMethod === "resume" ? (
+                <div>
+                  <p className="mb-2 text-sm font-medium">Resume *</p>
+                  <ResumeUpload
+                    selectedFile={resumeFile}
+                    onFileSelect={setResumeFile}
+                  />
+                </div>
+              ) : (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="skills"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Skills * (comma-separated)</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="React, TypeScript, Python, Machine Learning"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="experienceYears"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Years of Experience</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="2" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="experienceYears"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Years of Experience</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="2" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="education"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Education</FormLabel>
-                      <FormControl>
-                        <Input placeholder="BS Computer Science, MIT" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                    <FormField
+                      control={form.control}
+                      name="education"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Education</FormLabel>
+                          <FormControl>
+                            <Input placeholder="BS Computer Science, MIT" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-              <FormField
-                control={form.control}
-                name="preferredRoles"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Preferred Roles (comma-separated)</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Software Engineer, Full Stack Developer"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="preferredRoles"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Preferred Roles (comma-separated)</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Software Engineer, Full Stack Developer"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <FormField
-                  control={form.control}
-                  name="linkedinUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>LinkedIn URL</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="https://linkedin.com/in/..."
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <FormField
+                      control={form.control}
+                      name="linkedinUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>LinkedIn URL</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="https://linkedin.com/in/..."
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="githubUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>GitHub URL</FormLabel>
-                      <FormControl>
-                        <Input placeholder="https://github.com/..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="githubUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>GitHub URL</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://github.com/..." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="portfolioUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Portfolio URL</FormLabel>
-                      <FormControl>
-                        <Input placeholder="https://..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                    <FormField
+                      control={form.control}
+                      name="portfolioUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Portfolio URL</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://..." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-              <FormField
-                control={form.control}
-                name="bio"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Short Bio</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Tell us a bit about yourself and what you're looking for..."
-                        className="min-h-[100px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="bio"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Short Bio</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Tell us a bit about yourself and what you're looking for..."
+                            className="min-h-[100px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
             </form>
           </Form>
         )}
