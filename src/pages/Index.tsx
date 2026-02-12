@@ -33,7 +33,15 @@ const Index = () => {
     category: filters.hiringOnly ? "hiring" : "all",
   });
 
-  const startups = flattenStartups(data?.pages);
+  const startups = flattenStartups(data?.pages).sort((a, b) => {
+    if (sortBy === "name") {
+      return a.name.localeCompare(b.name);
+    }
+    if (sortBy === "teamSize") {
+      return (b.teamSize || 0) - (a.teamSize || 0);
+    }
+    return 0; // Default to API order (latest/relevance)
+  });
   const totalCount = data?.pages[0]?.total;
 
   const handleFilterChange = (key: string, value: string | boolean) => {
@@ -62,30 +70,34 @@ const Index = () => {
             </div>
 
             {/* Search Bar */}
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search startups, roles, stacks..."
-                className="pl-10 h-11 rounded-full bg-card border-border/60 focus:border-primary/50"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+
           </div>
 
           <div className="flex flex-col lg:flex-row gap-8">
             <FilterSidebar filters={filters} onFilterChange={handleFilterChange} />
 
-            <StartupGrid
-              startups={startups}
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-              totalCount={totalCount}
-              isLoading={isLoading}
-              hasMore={hasNextPage}
-              onLoadMore={() => fetchNextPage()}
-              isLoadingMore={isFetchingNextPage}
-            />
+            <div className="flex-1 flex flex-col gap-6">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search startups, roles, stacks..."
+                  className="pl-10 h-11 rounded-full bg-card border-border/60 focus:border-primary/50"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+
+              <StartupGrid
+                startups={startups}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                totalCount={totalCount}
+                isLoading={isLoading}
+                hasMore={hasNextPage}
+                onLoadMore={() => fetchNextPage()}
+                isLoadingMore={isFetchingNextPage}
+              />
+            </div>
           </div>
         </section>
       </main>

@@ -1,9 +1,8 @@
-import { ExternalLink, Linkedin, Users, Building2, Bookmark, ArrowRight } from "lucide-react";
+import { ExternalLink, Linkedin, Users, Building2, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { useState } from "react";
-import { useBookmarks } from "@/hooks/use-bookmarks";
 import { cn } from "@/lib/utils";
 
 export interface Startup {
@@ -28,7 +27,6 @@ interface StartupCardProps {
 
 const StartupCard = ({ startup, index }: StartupCardProps) => {
   const [logoError, setLogoError] = useState(false);
-  const { isBookmarked, toggleBookmark, loading } = useBookmarks();
 
   return (
     <article
@@ -59,7 +57,7 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <Link 
+                <Link
                   to={`/startup/${startup.id}`}
                   className="font-display text-lg text-foreground transition-colors group-hover:text-foreground/80 block truncate"
                 >
@@ -79,27 +77,6 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "h-9 w-9 shrink-0 rounded-lg",
-                    isBookmarked(startup.id) && "text-highlight bg-highlight/10"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    toggleBookmark(startup.id);
-                  }}
-                  disabled={loading}
-                >
-                  <Bookmark
-                    className={cn(
-                      "h-4 w-4 transition-all",
-                      isBookmarked(startup.id) && "fill-highlight scale-110"
-                    )}
-                  />
-                </Button>
                 <a
                   href={startup.website}
                   target="_blank"
@@ -161,7 +138,7 @@ const StartupCard = ({ startup, index }: StartupCardProps) => {
         </div>
 
         {/* View Details Link */}
-        <Link 
+        <Link
           to={`/startup/${startup.id}`}
           className="mt-5 flex items-center justify-center gap-2 text-body-sm font-medium text-foreground transition-all duration-200 hover:gap-3 group-hover:text-muted-foreground"
         >

@@ -2,7 +2,6 @@ import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Home, ArrowLeft, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import founderHqLogo from "@/assets/internatyc-icon-abstract.png";
 
 const NotFound = () => {
   const location = useLocation();
@@ -16,12 +15,7 @@ const NotFound = () => {
       <div className="text-center max-w-md">
         {/* Logo */}
         <div className="mb-8 flex justify-center">
-          <Link to="/" className="inline-flex items-center gap-3">
-            <img 
-              src={founderHqLogo} 
-              alt="FounderHQ" 
-              className="h-12 w-12 rounded-xl"
-            />
+          <Link to="/" className="inline-flex items-center">
             <span className="font-display text-2xl font-semibold tracking-tight">FounderHQ</span>
           </Link>
         </div>

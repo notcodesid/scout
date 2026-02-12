@@ -1,6 +1,5 @@
 import { Youtube, Twitter, Instagram, Linkedin } from "lucide-react";
 import { Link } from "react-router-dom";
-import founderHqLogo from "@/assets/internatyc-icon-abstract.png";
 
 const Footer = () => {
   const year = new Date().getFullYear();
@@ -11,12 +10,7 @@ const Footer = () => {
         <div className="grid gap-12 md:grid-cols-[auto_1fr_auto] md:items-center">
           {/* Left: Brand + Tagline */}
           <div className="flex flex-col gap-3">
-            <Link to="/" className="inline-flex items-center gap-2.5">
-              <img 
-                src={founderHqLogo} 
-                alt="FounderHQ" 
-                className="h-9 w-9 rounded-lg"
-              />
+            <Link to="/" className="inline-flex items-center">
               <span className="font-display text-xl tracking-tight">FounderHQ</span>
             </Link>
             <p className="text-body-sm text-muted-foreground max-w-[220px]">

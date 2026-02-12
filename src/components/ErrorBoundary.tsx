@@ -2,7 +2,6 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Home, RefreshCw, AlertTriangle } from 'lucide-react';
-import founderHqLogo from '@/assets/internatyc-icon-abstract.png';
 
 interface Props {
   children: ReactNode;
@@ -41,15 +40,6 @@ class ErrorBoundary extends Component<Props, State> {
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
           <Card className="max-w-lg w-full border-border/50 bg-card/50 backdrop-blur-sm">
             <CardContent className="pt-8 pb-8 text-center space-y-6">
-              {/* Logo */}
-              <div className="flex justify-center">
-                <img 
-                  src={founderHqLogo} 
-                  alt="FounderHQ" 
-                  className="h-12 w-12 opacity-80"
-                />
-              </div>
-
               {/* Error Icon */}
               <div className="flex justify-center">
                 <div className="p-4 rounded-full bg-destructive/10">
