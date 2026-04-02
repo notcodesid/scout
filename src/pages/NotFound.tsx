@@ -16,7 +16,7 @@ const NotFound = () => {
         {/* Logo */}
         <div className="mb-8 flex justify-center">
           <Link to="/" className="inline-flex items-center">
-            <span className="font-display text-2xl font-semibold tracking-tight">FounderHQ</span>
+            <span className="font-display text-2xl font-semibold tracking-tight">Scout</span>
           </Link>
         </div>
 

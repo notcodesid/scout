@@ -59,7 +59,7 @@ const PrivacyPage = () => {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">7. Contact Us</h2>
               <p className="text-muted-foreground">
-                If you have any questions about this Privacy Policy, please contact us at privacy@founderhq.site.
+                If you have any questions about this Privacy Policy, please contact us at privacy@scout.site.
               </p>
             </section>
           </div>

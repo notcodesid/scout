@@ -89,7 +89,7 @@ class ErrorBoundary extends Component<Props, State> {
               <p className="text-sm text-muted-foreground">
                 Need help?{' '}
                 <a 
-                  href="mailto:support@founderhq.com" 
+                  href="mailto:support@scout.com" 
                   className="text-primary hover:underline"
                 >
                   Contact Support

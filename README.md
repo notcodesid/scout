@@ -1,6 +1,6 @@
-# FounderHQ 🚀
+# Scout 🚀
 
-FounderHQ is an early-stage project that helps engineers discover Y Combinator startups and reach out to founders with highly personalized cold emails — all from one place.
+Scout is an early-stage project that helps engineers discover Y Combinator startups and reach out to founders with highly personalized cold emails — all from one place.
 
 The goal is simple: reduce randomness in cold outreach and help engineers connect with founders in a more thoughtful, targeted way.
 
@@ -21,7 +21,7 @@ This creates friction on both sides.
 
 ## Solution
 
-FounderHQ solves this by combining **startup discovery** with **intent-based, personalized outreach**.
+Scout solves this by combining **startup discovery** with **intent-based, personalized outreach**.
 
 - Browse YC startups with structured company information
 - Engineers explicitly choose which startups they want to apply to
@@ -34,7 +34,7 @@ Quality over volume is the core principle.
 
 ## How Response Rate Is Handled
 
-FounderHQ focuses on improving response rates through:
+Scout focuses on improving response rates through:
 
 - Highly personalized emails instead of mass outreach
 - Clear intent signaling (engineers select specific startups)
@@ -58,7 +58,7 @@ As the product evolves, lightweight filters (role, skills, availability) can be 
 
 ## Current Status
 
-FounderHQ is currently in **active development** and experimentation.
+Scout is currently in **active development** and experimentation.
 
 - Early UI and data pipelines are in place
 - Outreach flows are being tested manually
@@ -70,7 +70,7 @@ This is not a finished product — it is an experiment built in public.
 
 ## Vision
 
-FounderHQ aims to become the place where:
+Scout aims to become the place where:
 
 - Engineers discover founder-led opportunities
 - Founders receive fewer but better applications
@@ -80,6 +80,6 @@ FounderHQ aims to become the place where:
 
 ## Disclaimer
 
-FounderHQ is an independent project and is **not affiliated with Y Combinator**.
+Scout is an independent project and is **not affiliated with Y Combinator**.
 
 YC and Y Combinator are trademarks of their respective owners.

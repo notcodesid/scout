@@ -17,14 +17,14 @@ const TermsPage = () => {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">1. Acceptance of Terms</h2>
               <p className="text-muted-foreground">
-                By accessing and using FounderHQ, you accept and agree to be bound by the terms and provisions of this agreement. If you do not agree to these terms, please do not use our services.
+                By accessing and using Scout, you accept and agree to be bound by the terms and provisions of this agreement. If you do not agree to these terms, please do not use our services.
               </p>
             </section>
 
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">2. Use of Service</h2>
               <p className="text-muted-foreground">
-                FounderHQ provides a platform to discover tech startups and connect with potential job opportunities. You agree to use this service only for lawful purposes and in accordance with these Terms.
+                Scout provides a platform to discover tech startups and connect with potential job opportunities. You agree to use this service only for lawful purposes and in accordance with these Terms.
               </p>
             </section>
 
@@ -38,14 +38,14 @@ const TermsPage = () => {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">4. Intellectual Property</h2>
               <p className="text-muted-foreground">
-                All content, features, and functionality of FounderHQ are owned by us and are protected by international copyright, trademark, and other intellectual property laws.
+                All content, features, and functionality of Scout are owned by us and are protected by international copyright, trademark, and other intellectual property laws.
               </p>
             </section>
 
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">5. Limitation of Liability</h2>
               <p className="text-muted-foreground">
-                FounderHQ shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the service.
+                Scout shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the service.
               </p>
             </section>
 
@@ -59,7 +59,7 @@ const TermsPage = () => {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">7. Contact Us</h2>
               <p className="text-muted-foreground">
-                If you have any questions about these Terms, please contact us at support@founderhq.site.
+                If you have any questions about these Terms, please contact us at support@scout.site.
               </p>
             </section>
           </div>

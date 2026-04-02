@@ -12,7 +12,7 @@ const Header = () => {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5">
-          <span className="font-display text-xl tracking-tight">founderHQ</span>
+          <span className="font-display text-xl tracking-tight">Scout</span>
         </Link>
 
         {/* Desktop Nav Actions */}

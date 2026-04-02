@@ -11,7 +11,7 @@ const Footer = () => {
           {/* Left: Brand + Tagline */}
           <div className="flex flex-col gap-3">
             <Link to="/" className="inline-flex items-center">
-              <span className="font-display text-xl tracking-tight">FounderHQ</span>
+              <span className="font-display text-xl tracking-tight">Scout</span>
             </Link>
             <p className="text-body-sm text-muted-foreground max-w-[220px]">
               Your launchpad to tech careers
@@ -50,7 +50,7 @@ const Footer = () => {
                 href="https://youtube.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="FounderHQ on YouTube"
+                aria-label="Scout on YouTube"
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-all duration-200 hover:border-foreground/40 hover:text-foreground"
               >
                 <Youtube className="h-4 w-4" />
@@ -59,7 +59,7 @@ const Footer = () => {
                 href="https://twitter.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="FounderHQ on X"
+                aria-label="Scout on X"
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-all duration-200 hover:border-foreground/40 hover:text-foreground"
               >
                 <Twitter className="h-4 w-4" />
@@ -68,7 +68,7 @@ const Footer = () => {
                 href="https://instagram.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="FounderHQ on Instagram"
+                aria-label="Scout on Instagram"
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-all duration-200 hover:border-foreground/40 hover:text-foreground"
               >
                 <Instagram className="h-4 w-4" />
@@ -77,7 +77,7 @@ const Footer = () => {
                 href="https://linkedin.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="FounderHQ on LinkedIn"
+                aria-label="Scout on LinkedIn"
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-all duration-200 hover:border-foreground/40 hover:text-foreground"
               >
                 <Linkedin className="h-4 w-4" />
@@ -85,7 +85,7 @@ const Footer = () => {
             </div>
 
             <p className="text-body-sm text-muted-foreground">
-              © {year} FounderHQ
+              © {year} Scout
             </p>
           </div>
         </div>
