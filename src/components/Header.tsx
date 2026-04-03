@@ -42,13 +42,6 @@ const Header = () => {
                   Home
                 </Link>
                 <Link
-                  to="/#directory"
-                  className="text-lg font-medium transition-colors hover:text-primary"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Directory
-                </Link>
-                <Link
                   to="/apply"
                   className="text-lg font-medium transition-colors hover:text-primary"
                   onClick={() => setIsOpen(false)}

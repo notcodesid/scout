@@ -1,6 +1,6 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
-import { Home, ArrowLeft, Compass } from "lucide-react";
+import { Home, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const NotFound = () => {
@@ -35,17 +35,11 @@ const NotFound = () => {
         </p>
 
         {/* Navigation Links */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
+        <div className="flex justify-center mb-8">
           <Button asChild size="lg">
             <Link to="/">
               <Home className="mr-2 h-4 w-4" />
               Go Home
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link to="/#directory">
-              <Compass className="mr-2 h-4 w-4" />
-              Explore Startups
             </Link>
           </Button>
         </div>
