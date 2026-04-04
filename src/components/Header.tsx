@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
@@ -17,9 +17,15 @@ const Header = () => {
 
         {/* Desktop Nav Actions */}
         <div className="hidden md:flex items-center gap-4">
-          <Link to="/apply">
+          <Link
+            to="/jobs"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Jobs
+          </Link>
+          <Link to="/#how-it-works">
             <Button variant="default" size="sm" className="rounded-full px-5 gap-2">
-              Generate
+              How It Works
             </Button>
           </Link>
         </div>
@@ -42,20 +48,19 @@ const Header = () => {
                   Home
                 </Link>
                 <Link
-                  to="/apply"
+                  to="/jobs"
                   className="text-lg font-medium transition-colors hover:text-primary"
                   onClick={() => setIsOpen(false)}
                 >
-                  Apply Now
+                  Jobs
                 </Link>
-                <div className="pt-4">
-                  <Link to="/apply" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full rounded-full" size="lg">
-                      Generate
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
+                <Link
+                  to="/#how-it-works"
+                  className="text-lg font-medium transition-colors hover:text-primary"
+                  onClick={() => setIsOpen(false)}
+                >
+                  How It Works
+                </Link>
               </div>
             </SheetContent>
           </Sheet>

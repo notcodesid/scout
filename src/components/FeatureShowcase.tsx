@@ -1,7 +1,7 @@
 import FeatureEmailPreview from "./FeatureEmailPreview";
 import FeatureGrid from "./FeatureGrid";
 const FeatureShowcase = () => {
-  return <section className="relative py-20 md:py-32 overflow-hidden">
+  return <section id="how-it-works" className="relative py-20 md:py-32 overflow-hidden scroll-mt-24">
     {/* Background - matching hero style */}
     <div className="pointer-events-none absolute inset-0 grid-pattern opacity-50" />
     <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background via-background/98 to-background" />

@@ -1,8 +1,30 @@
-import { Mail, Sparkles } from "lucide-react";
+import { Mail } from "lucide-react";
+
+const previewSubject = "can i help build fast?";
+
+const previewBody = `hi [name],
+
+tldr;
+
+i really like what you're building.
+i don't have many hobbies outside coding.
+not great at a lot of things, but building products is something i keep coming back to.
+
+i enjoy the 0 -> 1 phase the most.
+figuring things out, shipping, breaking, fixing - repeating that loop.
+
+not reaching out with a perfect resume.
+just wanted to ask -
+
+are you looking for someone who can come in, build fast, and figure things out?
+
+if yes, i'd love to help.
+
+- [your name]`;
 
 const FeatureEmailPreview = () => {
     return (
-        <div className="relative max-w-4xl mx-auto">
+        <section id="sample-email" className="relative max-w-4xl mx-auto scroll-mt-24">
             <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/10 blur-3xl opacity-50 rounded-3xl" />
 
             <div className="relative bg-card border border-border rounded-2xl overflow-hidden shadow-xl">
@@ -23,43 +45,25 @@ const FeatureEmailPreview = () => {
                 <div className="p-6 md:p-8 space-y-4">
                     <div className="flex items-center gap-2 text-sm">
                         <span className="text-muted-foreground">To:</span>
-                        <span className="text-foreground">hiring@stripe.com</span>
+                        <span className="text-foreground">[founder email]</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                         <span className="text-muted-foreground">Subject:</span>
                         <span className="font-medium text-foreground">
-                            Full-Stack Engineer passionate about developer tools
+                            {previewSubject}
                         </span>
                     </div>
 
                     <div className="pt-4 border-t border-border/50">
-                        <div className="space-y-3">
-                            <p className="text-foreground leading-relaxed">
-                                Hi Patrick,
-                            </p>
-                            <p className="text-muted-foreground leading-relaxed">
-                                I've been following Stripe's journey since you launched Stripe Atlas, and as someone who's built
-                                payment integrations for 3 startups, I genuinely appreciate how you've made complex financial
-                                infrastructure feel simple.
-                            </p>
-                            <p className="text-muted-foreground leading-relaxed">
-                                At my current role at <span className="text-primary font-medium">[Previous Company]</span>, I led the migration
-                                to your new Payment Intents API, reducing checkout abandonment by 23%. I'd love to bring that
-                                same customer-obsessed engineering approach to your team.
-                            </p>
-                            <p className="text-muted-foreground leading-relaxed">
-                                Would you be open to a quick chat this week?
-                            </p>
-                            <p className="text-muted-foreground mt-6">
-                                — <span className="text-primary font-medium">[Your Name]</span>
-                            </p>
+                        <div className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
+                            {previewBody}
                         </div>
                     </div>
                 </div>
 
 
             </div>
-        </div>
+        </section>
     );
 };
 

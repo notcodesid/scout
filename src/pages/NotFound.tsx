@@ -52,8 +52,8 @@ const NotFound = () => {
               <ArrowLeft className="h-3 w-3" />
               Home
             </Link>
-            <Link to="/apply" className="text-primary hover:underline">
-              Apply as Engineer
+            <Link to="/jobs" className="text-primary hover:underline">
+              Jobs
             </Link>
             <Link to="/terms" className="text-primary hover:underline">
               Terms

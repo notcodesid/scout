@@ -1,26 +1,33 @@
 import { ArrowRight } from "lucide-react";
 
 const FeatureGrid = () => {
+    const features = [{
+        title: "Startups",
+        description: "Access our curated database of Y Combinator companies actively hiring engineers."
+    }, {
+        title: "Personalized",
+        description: "Each email is tailored to the company's mission, tech stack, and your unique background."
+    }, {
+        title: "Fast outreach",
+        description: "Generate personalized cold emails in seconds instead of spending hours researching and drafting."
+    }];
+
     return (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-            {[{
-                title: "Startups",
-                description: "Access our curated database of Y Combinator companies actively hiring engineers."
-            }, {
-                title: "Mid-size",
-                description: "Each email is tailored to the company's mission, tech stack, and your unique background."
-            }, {
-                title: "Enterprise",
-                description: "Generate dozens of personalized cold emails in seconds, not hours."
-            }].map(feature => (
-                <div key={feature.title} className="group p-10 rounded-[2rem] border border-black/5 bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-500 ease-out flex flex-col justify-between min-h-[400px]">
+            {features.map((feature) => (
+                <div
+                    key={feature.title}
+                    className="group flex min-h-[320px] flex-col justify-between rounded-[2rem] border border-border/70 bg-card p-10 text-left shadow-sm transition-all duration-500 ease-out hover:-translate-y-1 hover:border-border hover:shadow-xl"
+                >
                     <div className="flex justify-between items-start">
-                        <h3 className="font-display text-5xl font-medium text-foreground tracking-tight">{feature.title}</h3>
-                        <div className="w-12 h-12 rounded-full border border-border flex items-center justify-center group-hover:bg-foreground group-hover:text-background transition-all duration-500">
+                        <h3 className="max-w-[70%] font-display text-4xl font-medium tracking-tight text-card-foreground lg:text-5xl">
+                            {feature.title}
+                        </h3>
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border/80 text-card-foreground/70 transition-all duration-500 group-hover:bg-foreground group-hover:text-background">
                             <ArrowRight className="w-5 h-5" />
                         </div>
                     </div>
-                    <p className="text-muted-foreground text-lg leading-relaxed max-w-[90%]">
+                    <p className="max-w-[90%] text-lg leading-relaxed text-muted-foreground">
                         {feature.description}
                     </p>
                 </div>

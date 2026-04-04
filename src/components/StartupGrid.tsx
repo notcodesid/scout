@@ -9,9 +9,12 @@ interface StartupGridProps {
   onSortChange: (sort: string) => void;
   totalCount?: number;
   isLoading?: boolean;
+  isError?: boolean;
+  errorMessage?: string;
   hasMore?: boolean;
   onLoadMore?: () => void;
   isLoadingMore?: boolean;
+  onRetry?: () => void;
 }
 
 const StartupGrid = ({
@@ -20,9 +23,12 @@ const StartupGrid = ({
   onSortChange,
   totalCount,
   isLoading,
+  isError,
+  errorMessage,
   hasMore,
   onLoadMore,
-  isLoadingMore
+  isLoadingMore,
+  onRetry,
 }: StartupGridProps) => {
   const sortOptions = [
     { value: "latest", label: "Latest" },
@@ -47,6 +53,27 @@ const StartupGrid = ({
         </div>
         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           <StartupCardSkeleton count={6} />
+        </div>
+      </section>
+    );
+  }
+
+  if (isError && startups.length === 0) {
+    return (
+      <section className="flex-1" id="directory">
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+            <span className="text-3xl">!</span>
+          </div>
+          <h3 className="font-display text-xl font-semibold text-foreground">Failed to load startups</h3>
+          <p className="mt-2 max-w-md text-muted-foreground">
+            {errorMessage || "The startup feed did not load. Retry the request and check the API connection."}
+          </p>
+          {onRetry && (
+            <Button variant="outline" className="mt-6 rounded-full" onClick={onRetry}>
+              Retry
+            </Button>
+          )}
         </div>
       </section>
     );

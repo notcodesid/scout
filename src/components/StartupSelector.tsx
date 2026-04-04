@@ -1,11 +1,19 @@
-import { useState } from "react";
 import { Check } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
-import { StartupFull } from "@/data/startups";
+
+export interface StartupOption {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  batch?: string;
+  matchScore?: number;
+  matchReason?: string;
+}
 
 interface StartupSelectorProps {
-  startups: StartupFull[];
+  startups: StartupOption[];
   selectedIds: string[];
   onSelectionChange: (ids: string[]) => void;
   maxSelection?: number;
@@ -74,6 +82,11 @@ const StartupSelector = ({
                   <span className="font-medium text-foreground">
                     {startup.name}
                   </span>
+                  {typeof startup.matchScore === "number" && (
+                    <Badge variant="secondary" className="text-xs">
+                      {startup.matchScore}%
+                    </Badge>
+                  )}
                   {startup.batch && (
                     <Badge variant="accent" className="text-xs">
                       {startup.batch}
@@ -83,6 +96,11 @@ const StartupSelector = ({
                 <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                   {startup.description}
                 </p>
+                {startup.matchReason && (
+                  <p className="mt-2 line-clamp-2 text-xs text-muted-foreground/90">
+                    {startup.matchReason}
+                  </p>
+                )}
                 <div className="mt-2 flex flex-wrap gap-1">
                   {startup.tags.slice(0, 2).map((tag) => (
                     <Badge key={tag} variant="tag" className="text-xs">

@@ -9,7 +9,7 @@ const RefundPage = () => {
         <div className="max-w-3xl mx-auto">
           <h1 className="font-display text-4xl font-bold mb-8">Refund & Cancellation Policy</h1>
           
-          <div className="prose prose-gray dark:prose-invert max-w-none space-y-6">
+          <div className="prose prose-gray max-w-none space-y-6">
             <p className="text-muted-foreground">
               Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </p>

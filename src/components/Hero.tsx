@@ -37,16 +37,16 @@ const Hero = () => {
         <p className="mx-auto mt-8 max-w-lg text-lg md:text-xl text-muted-foreground animate-fade-in" style={{
         animationDelay: "0.2s"
       }}>
-          Generate personalized cold emails that actually get responses.
+          Discover YC startup roles and explore the best opportunities in one place.
         </p>
 
         {/* CTA Button */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3 animate-fade-in" style={{
         animationDelay: "0.3s"
       }}>
-          <Link to="/apply">
+          <Link to="/jobs">
             <Button size="lg" className="rounded-full px-8 h-12 text-base font-medium gap-2">
-              Generate
+              Browse Jobs
             </Button>
           </Link>
         </div>

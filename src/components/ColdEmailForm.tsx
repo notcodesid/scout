@@ -8,9 +8,8 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
 import ResumeUpload from "./ResumeUpload";
-import StartupSelector from "./StartupSelector";
+import StartupSelector, { StartupOption } from "./StartupSelector";
 import EmailPreview from "./EmailPreview";
-import { startups } from "@/data/startups";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -40,6 +39,14 @@ interface GeneratedEmail {
 
 type InputMethod = "resume" | "manual";
 
+interface MatchedStartup extends StartupOption {
+  website: string;
+  founded: string;
+  teamSize: number;
+  location: string;
+  founders: { name: string; linkedin?: string }[];
+}
+
 const generateUuid = () => {
   if (crypto.randomUUID) return crypto.randomUUID();
   const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -55,8 +62,10 @@ const ColdEmailForm = () => {
   const [step, setStep] = useState(1);
   const [inputMethod, setInputMethod] = useState<InputMethod>("resume");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [matchedStartups, setMatchedStartups] = useState<MatchedStartup[]>([]);
   const [selectedStartups, setSelectedStartups] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMatching, setIsMatching] = useState(false);
   const [generatedEmails, setGeneratedEmails] = useState<GeneratedEmail[]>([]);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
 
@@ -77,7 +86,7 @@ const ColdEmailForm = () => {
     },
   });
 
-  const selectedStartupData = startups.filter((s) =>
+  const selectedStartupData = matchedStartups.filter((s) =>
     selectedStartups.includes(s.id)
   );
 
@@ -122,7 +131,56 @@ const ColdEmailForm = () => {
         }
       }
 
-      setStep(2);
+      setIsMatching(true);
+      try {
+        const values = form.getValues();
+        const { data: matchData, error: matchError } = await supabase.functions.invoke(
+          "match-startups",
+          {
+            body: {
+              limit: 10,
+              candidate: {
+                fullName: values.fullName,
+                email: values.email,
+                skills: values.skills || "",
+                experienceYears: values.experienceYears || "",
+                education: values.education || "",
+                preferredRoles: values.preferredRoles || "",
+                bio: values.bio || "",
+                inputMethod,
+                resume: resumeFile
+                  ? {
+                      fileName: resumeFile.name,
+                      fileType: resumeFile.type,
+                      fileSize: resumeFile.size,
+                    }
+                  : null,
+              },
+            },
+          }
+        );
+
+        if (matchError) {
+          throw new Error("Failed to find startup matches");
+        }
+
+        const matches = (matchData?.data || []) as MatchedStartup[];
+        if (matches.length === 0) {
+          throw new Error("No startup matches found. Please try updating your details.");
+        }
+
+        setMatchedStartups(matches);
+        setSelectedStartups(matches.slice(0, 5).map((startup) => startup.id));
+        setStep(2);
+      } catch (error: any) {
+        toast({
+          title: "Matching failed",
+          description: error.message || "Could not match startups right now. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsMatching(false);
+      }
     } else if (step === 2) {
       if (selectedStartups.length === 0) {
         toast({
@@ -242,6 +300,7 @@ const ColdEmailForm = () => {
   const handleStartOver = () => {
     setStep(1);
     setInputMethod("resume");
+    setMatchedStartups([]);
     setSelectedStartups([]);
     setGeneratedEmails([]);
     setSubmissionId(null);
@@ -503,15 +562,15 @@ const ColdEmailForm = () => {
           <div className="space-y-6">
             <div>
               <h2 className="font-display text-xl font-semibold">
-                Choose your target startups
+                Your Best Startup Matches
               </h2>
               <p className="text-sm text-muted-foreground">
-                Select the YC startups you want to reach out to
+                We ranked startups from your profile. Keep up to 5 for email generation.
               </p>
             </div>
 
             <StartupSelector
-              startups={startups}
+              startups={matchedStartups}
               selectedIds={selectedStartups}
               onSelectionChange={setSelectedStartups}
               maxSelection={5}
@@ -562,13 +621,18 @@ const ColdEmailForm = () => {
               type="button"
               variant="default"
               onClick={handleNext}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isMatching}
               className="gap-2"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   {step === 2 ? "Generating..." : "Processing..."}
+                </>
+              ) : isMatching ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Finding Matches...
                 </>
               ) : (
                 <>
