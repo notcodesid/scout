@@ -23,11 +23,11 @@ const Header = () => {
           >
             Jobs
           </Link>
-          <Link to="/#how-it-works">
+          <a href="/#how-it-works">
             <Button variant="default" size="sm" className="rounded-full px-5 gap-2">
               How It Works
             </Button>
-          </Link>
+          </a>
         </div>
 
         {/* Mobile Nav */}
@@ -54,13 +54,13 @@ const Header = () => {
                 >
                   Jobs
                 </Link>
-                <Link
-                  to="/#how-it-works"
+                <a
+                  href="/#how-it-works"
                   className="text-lg font-medium transition-colors hover:text-primary"
                   onClick={() => setIsOpen(false)}
                 >
                   How It Works
-                </Link>
+                </a>
               </div>
             </SheetContent>
           </Sheet>

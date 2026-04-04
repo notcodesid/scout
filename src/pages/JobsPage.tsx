@@ -28,12 +28,12 @@ const FALLBACK_ROLE_LINKS: YCJobRoleLink[] = [
 
 function formatSyncTimestamp(value: string | null) {
   if (!value) {
-    return "Not synced yet";
+    return "Fresh YC roles, updated regularly";
   }
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    return "Not synced yet";
+    return "Fresh YC roles, updated regularly";
   }
 
   return new Intl.DateTimeFormat(undefined, {
@@ -67,8 +67,8 @@ const JobsPage = () => {
   const roleLinks = firstPage?.roleLinks?.length ? firstPage.roleLinks : FALLBACK_ROLE_LINKS;
   const loadedJobsCount = jobs.length;
   const syncMessage = firstPage?.lastSyncedAt
-    ? `Last synced ${formatSyncTimestamp(firstPage.lastSyncedAt)}`
-    : "Cached jobs will appear here after the first sync completes.";
+    ? `Updated ${formatSyncTimestamp(firstPage.lastSyncedAt)}`
+    : "Fresh YC roles, updated regularly.";
   const displayError =
     error instanceof Error
       ? error.message
@@ -135,14 +135,14 @@ const JobsPage = () => {
           <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="max-w-3xl">
               <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">
-                Browse real roles from YC&apos;s Work at a Startup board
+                Discover live roles from YC startups
               </h1>
               <p className="mt-4 text-lg text-muted-foreground">
-                Cached job summaries synced from the official Y Combinator jobs pages, grouped by role.
+                Explore current openings from the official Work at a Startup board, grouped by role so you can move faster.
               </p>
               <p className="mt-3 text-sm text-muted-foreground">
                 {syncMessage}
-                {firstPage?.isStale ? " Cache is older than the six-hour refresh window." : ""}
+                {firstPage?.isStale ? " Showing the latest available Scout snapshot while we refresh." : ""}
               </p>
             </div>
             <div className="rounded-2xl border border-border/60 bg-card px-5 py-4">

@@ -12,7 +12,7 @@ const JobsPreviewSection = () => {
   const jobs = flattenJobs(data?.pages).slice(0, PREVIEW_COUNT);
 
   return (
-    <section id="jobs-preview" className="border-t border-border/40 bg-background">
+    <section id="jobs-preview" className="bg-background">
       <div className="container mx-auto px-4 py-16 md:py-20">
         <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">

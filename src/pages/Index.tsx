@@ -4,6 +4,7 @@ import FeatureShowcase from "@/components/FeatureShowcase";
 import Footer from "@/components/Footer";
 import FeatureEmailPreview from "@/components/FeatureEmailPreview";
 import JobsPreviewSection from "@/components/JobsPreviewSection";
+import HowItWorksSection from "@/components/HowItWorksSection";
 
 const Index = () => {
   return (
@@ -13,6 +14,7 @@ const Index = () => {
       <main>
         <Hero />
         <FeatureEmailPreview />
+        <HowItWorksSection />
         <FeatureShowcase />
         <JobsPreviewSection />
       </main>
