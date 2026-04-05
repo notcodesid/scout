@@ -1,5 +1,3 @@
-import { Link } from "react-router-dom";
-import { ArrowLeft, Rocket, Mail } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ColdEmailForm from "@/components/ColdEmailForm";
@@ -12,15 +10,13 @@ const ApplyPage = () => {
       <main className="container mx-auto px-4 py-8 md:py-12">
         {/* Hero */}
         <section className="mb-12 text-center">
-
           <h1 className="font-display text-3xl font-bold tracking-tight md:text-5xl">
-            Land Your Dream
-            <span className="text-gradient"> YC Internship</span>
+            Upload your resume.
+            <span className="text-gradient"> Get YC-fit outreach.</span>
           </h1>
 
           <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-            Upload your resume or fill in your details, select startups you want to reach out to,
-            and we'll generate personalized cold emails for you.
+            Scout extracts your profile, ranks live YC roles and relevant startups, then writes plain-text cold emails you can copy and send.
           </p>
         </section>
 

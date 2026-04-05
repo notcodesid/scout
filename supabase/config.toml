@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.match-startups]
 verify_jwt = false
+
+[functions.extract-candidate-profile]
+verify_jwt = false
+
+[functions.match-jobs]
+verify_jwt = false
+
+[functions.generate-cold-email]
+verify_jwt = false

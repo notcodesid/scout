@@ -1,149 +1,111 @@
 import { useState } from "react";
-import { Copy, Check, Mail, Building } from "lucide-react";
-import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
 import { useToast } from "@/hooks/use-toast";
-
-interface GeneratedEmail {
-  id?: string;
-  startupId: string;
-  startupName: string;
-  subject: string;
-  body: string;
-}
+import { Check, Copy, Mail, Sparkles } from "lucide-react";
+import { GeneratedEmail } from "@/lib/mvp1";
 
 interface EmailPreviewProps {
   emails: GeneratedEmail[];
-  engineerEmail: string;
 }
 
-const EmailPreview = ({ emails, engineerEmail }: EmailPreviewProps) => {
+const EmailPreview = ({ emails }: EmailPreviewProps) => {
   const { toast } = useToast();
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  const handleCopy = async (email: GeneratedEmail, type: "subject" | "body" | "all") => {
-    let textToCopy = "";
-    
-    if (type === "subject") {
-      textToCopy = email.subject;
-    } else if (type === "body") {
-      textToCopy = email.body;
-    } else {
-      textToCopy = `Subject: ${email.subject}\n\n${email.body}`;
-    }
-
-    await navigator.clipboard.writeText(textToCopy);
-    setCopiedId(`${email.startupId}-${type}`);
-    
+  const copy = async (key: string, value: string, label: string) => {
+    await navigator.clipboard.writeText(value);
+    setCopiedKey(key);
     toast({
       title: "Copied to clipboard",
-      description: type === "all" ? "Full email copied" : `${type.charAt(0).toUpperCase() + type.slice(1)} copied`,
+      description: label,
     });
-
-    setTimeout(() => setCopiedId(null), 2000);
+    window.setTimeout(() => setCopiedKey(null), 1800);
   };
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
-        <div className="flex items-center gap-3">
-          <Mail className="h-5 w-5 text-primary" />
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Sparkles className="h-5 w-5" />
+          </div>
           <div>
-            <p className="font-medium text-foreground">
-              {emails.length} personalized emails generated!
-            </p>
+            <p className="font-medium text-foreground">{emails.length} outreach drafts are ready</p>
             <p className="text-sm text-muted-foreground">
-              These emails will be sent to <span className="text-primary">{engineerEmail}</span>
+              Each draft includes a fit summary, three subject line options, and a copy-paste-ready email body.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="space-y-4">
-        {emails.map((email) => (
-          <div
-            key={email.startupId}
-            className="glass-card overflow-hidden"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-border/50 bg-secondary/30 px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Building className="h-4 w-4" />
-                </div>
-                <div>
+      {emails.map((email) => {
+        const fullEmail = `Subject: ${email.subject}\n\n${email.body}`;
+
+        return (
+          <article key={`${email.targetType}-${email.startupId}`} className="glass-card overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-secondary/30 px-5 py-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-primary" />
                   <p className="font-medium text-foreground">{email.startupName}</p>
-                  <p className="text-xs text-muted-foreground">Cold email ready</p>
+                  <Badge variant="secondary">{email.targetType === "job" ? "Job" : "Startup"}</Badge>
                 </div>
+                <p className="mt-1 text-sm text-muted-foreground">{email.fitSummary}</p>
               </div>
+
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleCopy(email, "all")}
-                className="gap-2"
+                variant="default"
+                onClick={() => void copy(`${email.startupId}-all`, fullEmail, "Full email copied")}
               >
-                {copiedId === `${email.startupId}-all` ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Copy All
-                  </>
-                )}
+                {copiedKey === `${email.startupId}-all` ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                Copy Email
               </Button>
             </div>
 
-            {/* Subject */}
-            <div className="border-b border-border/50 px-4 py-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Subject</p>
-                  <p className="font-medium text-foreground">{email.subject}</p>
+            <div className="space-y-5 px-5 py-5">
+              <section>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Subject line options</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void copy(`${email.startupId}-subject`, email.subjectOptions.join("\n"), "Subject options copied")}
+                  >
+                    {copiedKey === `${email.startupId}-subject` ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    Copy Subjects
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleCopy(email, "subject")}
-                  className="h-8 w-8 shrink-0"
-                >
-                  {copiedId === `${email.startupId}-subject` ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
+                <div className="flex flex-wrap gap-2">
+                  {email.subjectOptions.map((subject) => (
+                    <Badge key={subject} variant={subject === email.subject ? "accent" : "outline"} className="max-w-full whitespace-normal text-left">
+                      {subject}
+                    </Badge>
+                  ))}
+                </div>
+              </section>
 
-            {/* Body */}
-            <div className="px-4 py-3">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground mb-2">Body</p>
-                  <div className="whitespace-pre-wrap text-sm text-muted-foreground">
-                    {email.body}
-                  </div>
+              <section>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Primary email</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void copy(`${email.startupId}-body`, email.body, "Email body copied")}
+                  >
+                    {copiedKey === `${email.startupId}-body` ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    Copy Body
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleCopy(email, "body")}
-                  className="h-8 w-8 shrink-0"
-                >
-                  {copiedId === `${email.startupId}-body` ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+                <div className="rounded-2xl border border-border/60 bg-background/70 p-4">
+                  <p className="mb-3 text-sm font-medium text-foreground">Subject: {email.subject}</p>
+                  <div className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{email.body}</div>
+                </div>
+              </section>
             </div>
-          </div>
-        ))}
-      </div>
+          </article>
+        );
+      })}
     </div>
   );
 };

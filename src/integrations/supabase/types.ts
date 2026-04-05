@@ -53,6 +53,7 @@ export type Database = {
           created_at: string
           education: string | null
           email: string
+          extracted_profile: Json | null
           experience_years: number | null
           full_name: string
           github_url: string | null
@@ -62,6 +63,7 @@ export type Database = {
           portfolio_url: string | null
           preferred_locations: string[] | null
           preferred_roles: string[] | null
+          profile_source: string | null
           resume_url: string | null
           skills: string[] | null
           user_id: string | null
@@ -71,6 +73,7 @@ export type Database = {
           created_at?: string
           education?: string | null
           email: string
+          extracted_profile?: Json | null
           experience_years?: number | null
           full_name: string
           github_url?: string | null
@@ -80,6 +83,7 @@ export type Database = {
           portfolio_url?: string | null
           preferred_locations?: string[] | null
           preferred_roles?: string[] | null
+          profile_source?: string | null
           resume_url?: string | null
           skills?: string[] | null
           user_id?: string | null
@@ -89,6 +93,7 @@ export type Database = {
           created_at?: string
           education?: string | null
           email?: string
+          extracted_profile?: Json | null
           experience_years?: number | null
           full_name?: string
           github_url?: string | null
@@ -98,6 +103,7 @@ export type Database = {
           portfolio_url?: string | null
           preferred_locations?: string[] | null
           preferred_roles?: string[] | null
+          profile_source?: string | null
           resume_url?: string | null
           skills?: string[] | null
           user_id?: string | null
@@ -108,40 +114,52 @@ export type Database = {
         Row: {
           body: string
           created_at: string
+          fit_summary: string | null
           id: string
           response_status: string | null
           sent_at: string | null
           startup_id: string
           startup_name: string
           status: string | null
+          subject_options: string[] | null
           subject: string
           submission_id: string | null
+          target_metadata: Json | null
+          target_type: string | null
           user_id: string | null
         }
         Insert: {
           body: string
           created_at?: string
+          fit_summary?: string | null
           id?: string
           response_status?: string | null
           sent_at?: string | null
           startup_id: string
           startup_name: string
           status?: string | null
+          subject_options?: string[] | null
           subject: string
           submission_id?: string | null
+          target_metadata?: Json | null
+          target_type?: string | null
           user_id?: string | null
         }
         Update: {
           body?: string
           created_at?: string
+          fit_summary?: string | null
           id?: string
           response_status?: string | null
           sent_at?: string | null
           startup_id?: string
           startup_name?: string
           status?: string | null
+          subject_options?: string[] | null
           subject?: string
           submission_id?: string | null
+          target_metadata?: Json | null
+          target_type?: string | null
           user_id?: string | null
         }
         Relationships: [

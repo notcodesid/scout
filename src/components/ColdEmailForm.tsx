@@ -1,646 +1,594 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { ArrowRight, ArrowLeft, Loader2, Sparkles, CheckCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, ArrowLeft, ArrowRight, Briefcase, Building2, CheckCircle, ExternalLink, Loader2, Sparkles, UploadCloud } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
+import { Badge } from "./ui/badge";
 import ResumeUpload from "./ResumeUpload";
-import StartupSelector, { StartupOption } from "./StartupSelector";
 import EmailPreview from "./EmailPreview";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ApplyFlowDraft, CandidateProfile, GeneratedEmail, JobMatch, MatchTarget, StartupMatch, defaultCandidateProfile, profileToSubmissionPayload } from "@/lib/mvp1";
+import { cn } from "@/lib/utils";
 
-const formSchema = z.object({
-  fullName: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email"),
-  phone: z.string().optional(),
-  linkedinUrl: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
-  githubUrl: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
-  portfolioUrl: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
-  skills: z.string().optional(),
-  experienceYears: z.string().optional(),
-  education: z.string().optional(),
-  preferredRoles: z.string().optional(),
-  bio: z.string().max(500, "Bio must be less than 500 characters").optional(),
-});
+const STORAGE_KEY = "scout-mvp1-apply-draft";
 
-type FormData = z.infer<typeof formSchema>;
-
-interface GeneratedEmail {
-  id?: string;
-  startupId: string;
-  startupName: string;
-  subject: string;
-  body: string;
-}
-
-type InputMethod = "resume" | "manual";
-
-interface MatchedStartup extends StartupOption {
-  website: string;
-  founded: string;
-  teamSize: number;
-  location: string;
-  founders: { name: string; linkedin?: string }[];
-}
-
-const generateUuid = () => {
+function generateUuid() {
   if (crypto.randomUUID) return crypto.randomUUID();
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  // RFC 4122 version 4
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function serializeDraft(draft: ApplyFlowDraft) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+}
+
+function readDraft(): ApplyFlowDraft | null {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as ApplyFlowDraft;
+  } catch {
+    return null;
+  }
+}
+
+function emptyDraft(): ApplyFlowDraft {
+  return {
+    step: 1,
+    submissionId: null,
+    storagePath: null,
+    resumeUrl: null,
+    resumeName: null,
+    profile: null,
+    selectedMode: "jobs",
+    selectedTargetIds: [],
+    jobMatches: [],
+    startupMatches: [],
+    generatedEmails: [],
+  };
+}
+
+function parseCommaList(input: string) {
+  return input
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function profileToFormState(profile: CandidateProfile) {
+  return {
+    ...profile,
+    skills: profile.skills.join(", "),
+    preferredRoles: profile.preferredRoles.join(", "),
+    experienceYears: String(profile.experienceYears || ""),
+  };
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+function buildProfileFromForm(values: Record<string, string>): CandidateProfile {
+  return {
+    fullName: values.fullName.trim(),
+    email: values.email.trim(),
+    phone: values.phone.trim(),
+    linkedinUrl: values.linkedinUrl.trim(),
+    githubUrl: values.githubUrl.trim(),
+    portfolioUrl: values.portfolioUrl.trim(),
+    skills: parseCommaList(values.skills),
+    experienceYears: Number.parseInt(values.experienceYears || "0", 10) || 0,
+    education: values.education.trim(),
+    preferredRoles: parseCommaList(values.preferredRoles),
+    summary: values.summary.trim(),
+  };
+}
+
+const initialFormValues = {
+  fullName: "",
+  email: "",
+  phone: "",
+  linkedinUrl: "",
+  githubUrl: "",
+  portfolioUrl: "",
+  skills: "",
+  experienceYears: "",
+  education: "",
+  preferredRoles: "",
+  summary: "",
 };
 
 const ColdEmailForm = () => {
   const { toast } = useToast();
-  const [step, setStep] = useState(1);
-  const [inputMethod, setInputMethod] = useState<InputMethod>("resume");
+  const [draft, setDraft] = useState<ApplyFlowDraft>(() => readDraft() || emptyDraft());
   const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [matchedStartups, setMatchedStartups] = useState<MatchedStartup[]>([]);
-  const [selectedStartups, setSelectedStartups] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formValues, setFormValues] = useState(initialFormValues);
+  const [isExtracting, setIsExtracting] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
-  const [generatedEmails, setGeneratedEmails] = useState<GeneratedEmail[]>([]);
-  const [submissionId, setSubmissionId] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      fullName: "",
-      email: "",
-      phone: "",
-      linkedinUrl: "",
-      githubUrl: "",
-      portfolioUrl: "",
-      skills: "",
-      experienceYears: "",
-      education: "",
-      preferredRoles: "",
-      bio: "",
-    },
-  });
+  useEffect(() => {
+    serializeDraft(draft);
+  }, [draft]);
 
-  const selectedStartupData = matchedStartups.filter((s) =>
-    selectedStartups.includes(s.id)
-  );
-
-  const handleNext = async () => {
-    if (step === 1) {
-      const isContactValid = await form.trigger(["fullName", "email"]);
-      if (!isContactValid) {
-        return;
-      }
-
-      if (inputMethod === "resume") {
-        if (!resumeFile) {
-          toast({
-            title: "Resume required",
-            description: "Upload your resume, or switch to Fill Manually.",
-            variant: "destructive",
-          });
-          return;
-        }
-      } else {
-        const isManualValid = await form.trigger([
-          "skills",
-          "experienceYears",
-          "education",
-          "preferredRoles",
-          "linkedinUrl",
-          "githubUrl",
-          "portfolioUrl",
-          "bio",
-        ]);
-        if (!isManualValid) {
-          return;
-        }
-
-        const skills = (form.getValues("skills") || "").trim();
-        if (!skills) {
-          form.setError("skills", {
-            type: "manual",
-            message: "Please enter at least one skill",
-          });
-          return;
-        }
-      }
-
-      setIsMatching(true);
-      try {
-        const values = form.getValues();
-        const { data: matchData, error: matchError } = await supabase.functions.invoke(
-          "match-startups",
-          {
-            body: {
-              limit: 10,
-              candidate: {
-                fullName: values.fullName,
-                email: values.email,
-                skills: values.skills || "",
-                experienceYears: values.experienceYears || "",
-                education: values.education || "",
-                preferredRoles: values.preferredRoles || "",
-                bio: values.bio || "",
-                inputMethod,
-                resume: resumeFile
-                  ? {
-                      fileName: resumeFile.name,
-                      fileType: resumeFile.type,
-                      fileSize: resumeFile.size,
-                    }
-                  : null,
-              },
-            },
-          }
-        );
-
-        if (matchError) {
-          throw new Error("Failed to find startup matches");
-        }
-
-        const matches = (matchData?.data || []) as MatchedStartup[];
-        if (matches.length === 0) {
-          throw new Error("No startup matches found. Please try updating your details.");
-        }
-
-        setMatchedStartups(matches);
-        setSelectedStartups(matches.slice(0, 5).map((startup) => startup.id));
-        setStep(2);
-      } catch (error: any) {
-        toast({
-          title: "Matching failed",
-          description: error.message || "Could not match startups right now. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsMatching(false);
-      }
-    } else if (step === 2) {
-      if (selectedStartups.length === 0) {
-        toast({
-          title: "Select startups",
-          description: "Please select at least one startup to generate emails",
-          variant: "destructive",
-        });
-        return;
-      }
-      await handleSubmit();
+  useEffect(() => {
+    if (draft.profile) {
+      setFormValues(profileToFormState(draft.profile));
     }
+  }, [draft.profile]);
+
+  const currentTargets = draft.selectedMode === "jobs" ? draft.jobMatches : draft.startupMatches;
+  const selectedTargets = useMemo(() => {
+    const selectedIds = new Set(draft.selectedTargetIds);
+    return currentTargets.filter((target) => selectedIds.has(target.targetType === "job" ? target.jobId : target.id));
+  }, [currentTargets, draft.selectedTargetIds]);
+
+  const topJobScore = draft.jobMatches[0]?.matchScore || 0;
+  const shouldSuggestStartups = draft.jobMatches.length === 0 || topJobScore < 55;
+
+  const updateDraft = (updater: (current: ApplyFlowDraft) => ApplyFlowDraft) => {
+    setDraft((current) => updater(current));
   };
 
-  const handleBack = () => {
-    if (step > 1 && step < 4) {
-      setStep(step - 1);
-    }
+  const updateFormValue = (field: keyof typeof initialFormValues, value: string) => {
+    setFormValues((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    const values = form.getValues();
-    const parsedSkills = values.skills
-      ? values.skills.split(",").map((s) => s.trim()).filter(Boolean)
-      : [];
-    const parsedPreferredRoles = values.preferredRoles
-      ? values.preferredRoles.split(",").map((r) => r.trim()).filter(Boolean)
-      : [];
+  const resetFlow = () => {
+    setResumeFile(null);
+    setFormValues(initialFormValues);
+    localStorage.removeItem(STORAGE_KEY);
+    setDraft(emptyDraft());
+  };
 
-    try {
-      const submissionId = generateUuid();
-      // Upload resume if provided
-      let resumeUrl = null;
-      if (resumeFile) {
-        const fileName = `${Date.now()}-${resumeFile.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("resumes")
-          .upload(fileName, resumeFile);
+  const ensureSubmission = async (profile: CandidateProfile, profileSource: "resume_llm" | "edited") => {
+    const payload = {
+      ...profileToSubmissionPayload(profile),
+      id: draft.submissionId || generateUuid(),
+      resume_url: draft.resumeUrl,
+      profile_source: profileSource,
+      user_id: null,
+    };
 
-        if (uploadError) {
-          console.error("Resume upload error:", uploadError);
-        } else {
-          const { data: urlData } = supabase.storage
-            .from("resumes")
-            .getPublicUrl(fileName);
-          resumeUrl = urlData.publicUrl;
-        }
-      }
-
-      // Save engineer submission
-      const { error: submissionError } = await supabase
+    if (draft.submissionId) {
+      const { error } = await supabase
         .from("engineer_submissions")
-        .insert({
-          id: submissionId,
-          full_name: values.fullName,
-          email: values.email,
-          phone: values.phone || null,
-          linkedin_url: values.linkedinUrl || null,
-          github_url: values.githubUrl || null,
-          portfolio_url: values.portfolioUrl || null,
-          resume_url: resumeUrl,
-          skills: parsedSkills,
-          experience_years: values.experienceYears ? parseInt(values.experienceYears) : 0,
-          education: values.education || null,
-          preferred_roles: parsedPreferredRoles,
-          bio: values.bio || null,
-          user_id: null,
-        });
+        .update(payload)
+        .eq("id", draft.submissionId);
 
-      if (submissionError) {
-        console.error("Submission error:", submissionError);
-        throw new Error("Failed to save your information");
-      }
+      if (error) throw error;
+      return draft.submissionId;
+    }
 
-      setSubmissionId(submissionId);
+    const { error } = await supabase.from("engineer_submissions").insert(payload);
+    if (error) throw error;
 
-      // Generate cold emails
-      const { data: emailData, error: emailError } = await supabase.functions.invoke(
-        "generate-cold-emails",
-        {
-          body: {
-            submissionId: submissionId,
-            selectedStartups: selectedStartupData,
-            userId: null,
-          },
-        }
-      );
+    updateDraft((current) => ({ ...current, submissionId: payload.id }));
+    return payload.id;
+  };
 
-      if (emailError) {
-        console.error("Email generation error:", emailError);
-        throw new Error("Failed to generate emails");
-      }
-
-      if (emailData?.error) {
-        throw new Error(emailData.error);
-      }
-
-      setGeneratedEmails(emailData.emails || []);
-      setStep(3);
-
+  const handleExtractProfile = async () => {
+    if (!resumeFile) {
       toast({
-        title: "Emails generated!",
-        description: `${emailData.emails?.length || 0} personalized cold emails are ready`,
+        title: "Resume required",
+        description: "Upload a PDF resume to continue.",
+        variant: "destructive",
       });
-    } catch (error: any) {
-      console.error("Submit error:", error);
+      return;
+    }
+
+    setIsExtracting(true);
+    try {
+      const storagePath = `guest/${Date.now()}-${resumeFile.name}`;
+      const { error: uploadError } = await supabase.storage.from("resumes").upload(storagePath, resumeFile);
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: publicData } = supabase.storage.from("resumes").getPublicUrl(storagePath);
+      const { data, error } = await supabase.functions.invoke("extract-candidate-profile", {
+        body: {
+          resumePath: storagePath,
+          fileName: resumeFile.name,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const profile = (data?.profile || defaultCandidateProfile()) as CandidateProfile;
+      updateDraft((current) => ({
+        ...current,
+        step: 2,
+        storagePath,
+        resumeUrl: publicData.publicUrl,
+        resumeName: resumeFile.name,
+        profile,
+      }));
+
+      await ensureSubmission(profile, "resume_llm");
+
       toast({
-        title: "Error",
-        description: error.message || "Something went wrong. Please try again.",
+        title: "Profile extracted",
+        description: "Review the extracted candidate data before matching.",
+      });
+    } catch (error: unknown) {
+      toast({
+        title: "Extraction failed",
+        description: getErrorMessage(error, "We could not parse the resume right now."),
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setIsExtracting(false);
     }
   };
 
-  const handleStartOver = () => {
-    setStep(1);
-    setInputMethod("resume");
-    setMatchedStartups([]);
-    setSelectedStartups([]);
-    setGeneratedEmails([]);
-    setSubmissionId(null);
-    setResumeFile(null);
-    form.reset();
+  const handleMatchTargets = async () => {
+    const profile = buildProfileFromForm(formValues);
+
+    if (!profile.fullName || !profile.email) {
+      toast({
+        title: "Profile incomplete",
+        description: "Full name and email are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsMatching(true);
+    try {
+      const submissionId = await ensureSubmission(profile, "edited");
+
+      const [jobsResponse, startupsResponse] = await Promise.all([
+        supabase.functions.invoke("match-jobs", {
+          body: {
+            candidateProfile: profile,
+            limit: 10,
+          },
+        }),
+        supabase.functions.invoke("match-startups", {
+          body: {
+            candidateProfile: profile,
+            limit: 8,
+          },
+        }),
+      ]);
+
+      if (jobsResponse.error) throw jobsResponse.error;
+      if (startupsResponse.error) throw startupsResponse.error;
+
+      updateDraft((current) => ({
+        ...current,
+        step: 3,
+        submissionId,
+        profile,
+        selectedMode: "jobs",
+        selectedTargetIds: [],
+        jobMatches: (jobsResponse.data?.data || []) as JobMatch[],
+        startupMatches: (startupsResponse.data?.data || []) as StartupMatch[],
+        generatedEmails: [],
+      }));
+    } catch (error: unknown) {
+      toast({
+        title: "Matching failed",
+        description: getErrorMessage(error, "We could not rank YC jobs right now."),
+        variant: "destructive",
+      });
+    } finally {
+      setIsMatching(false);
+    }
+  };
+
+  const handleToggleTarget = (target: MatchTarget) => {
+    const id = target.targetType === "job" ? target.jobId : target.id;
+    updateDraft((current) => {
+      const selected = current.selectedTargetIds.includes(id)
+        ? current.selectedTargetIds.filter((item) => item !== id)
+        : [...current.selectedTargetIds, id];
+
+      return {
+        ...current,
+        selectedTargetIds: selected,
+      };
+    });
+  };
+
+  const handleGenerateEmails = async () => {
+    if (!draft.profile) {
+      toast({
+        title: "Profile missing",
+        description: "Resume extraction and profile review must be completed first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedTargets.length === 0) {
+      toast({
+        title: "Select at least one target",
+        description: "Choose the jobs or startups you want to generate outreach for.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-cold-email", {
+        body: {
+          submissionId: draft.submissionId,
+          candidateProfile: draft.profile,
+          selectedTargets,
+          userId: null,
+        },
+      });
+
+      if (error) throw error;
+
+      updateDraft((current) => ({
+        ...current,
+        step: 4,
+        generatedEmails: (data?.emails || []) as GeneratedEmail[],
+      }));
+
+      toast({
+        title: "Emails generated",
+        description: "Your copy-paste outreach drafts are ready.",
+      });
+    } catch (error: unknown) {
+      toast({
+        title: "Generation failed",
+        description: getErrorMessage(error, "We could not generate the email drafts."),
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
-    <div className="mx-auto max-w-3xl">
-      {/* Progress Steps */}
+    <div className="mx-auto max-w-5xl">
       <div className="mb-8 flex items-center justify-center gap-2">
-        {[1, 2, 3].map((s) => (
-          <div key={s} className="flex items-center">
+        {[1, 2, 3, 4].map((step) => (
+          <div key={step} className="flex items-center">
             <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors ${s < step
-                  ? "bg-primary text-primary-foreground"
-                  : s === step
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-muted-foreground"
-                }`}
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium transition-colors",
+                draft.step >= step ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground",
+              )}
             >
-              {s < step ? <CheckCircle className="h-4 w-4" /> : s}
+              {draft.step > step ? <CheckCircle className="h-4 w-4" /> : step}
             </div>
-            {s < 3 && (
-              <div
-                className={`h-0.5 w-12 ${s < step ? "bg-primary" : "bg-secondary"
-                  }`}
-              />
-            )}
+            {step < 4 && <div className={cn("h-0.5 w-14", draft.step > step ? "bg-primary" : "bg-secondary")} />}
           </div>
         ))}
       </div>
 
-      {/* Step Labels */}
-      <div className="mb-8 flex justify-between text-sm">
-        <span className={step >= 1 ? "text-primary" : "text-muted-foreground"}>
-          Your Info
-        </span>
-        <span className={step >= 2 ? "text-primary" : "text-muted-foreground"}>
-          Select Startups
-        </span>
-        <span className={step >= 3 ? "text-primary" : "text-muted-foreground"}>
-          Get Emails
-        </span>
+      <div className="mb-8 flex justify-between text-xs uppercase tracking-[0.18em] text-muted-foreground">
+        <span>Upload Resume</span>
+        <span>Review Profile</span>
+        <span>Select Targets</span>
+        <span>Copy Emails</span>
       </div>
 
-      {/* Step Content */}
       <div className="glass-card p-6 md:p-8">
-        {step === 1 && (
-          <Form {...form}>
-            <form className="space-y-6">
-              <div className="mb-6">
-                <h2 className="font-display text-xl font-semibold">
-                  Tell us about yourself
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Choose one: upload your resume or fill details manually.
-                </p>
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Button
-                  type="button"
-                  variant={inputMethod === "resume" ? "default" : "outline"}
-                  onClick={() => setInputMethod("resume")}
-                  className="h-11"
-                >
-                  Upload Resume
-                </Button>
-                <Button
-                  type="button"
-                  variant={inputMethod === "manual" ? "default" : "outline"}
-                  onClick={() => setInputMethod("manual")}
-                  className="h-11"
-                >
-                  Fill Manually
-                </Button>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="fullName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email *</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="john@example.com"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {inputMethod === "resume" ? (
-                <div>
-                  <p className="mb-2 text-sm font-medium">Resume *</p>
-                  <ResumeUpload
-                    selectedFile={resumeFile}
-                    onFileSelect={setResumeFile}
-                  />
-                </div>
-              ) : (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="skills"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Skills * (comma-separated)</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="React, TypeScript, Python, Machine Learning"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="experienceYears"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Years of Experience</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="2" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="education"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Education</FormLabel>
-                          <FormControl>
-                            <Input placeholder="BS Computer Science, MIT" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="preferredRoles"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Preferred Roles (comma-separated)</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Software Engineer, Full Stack Developer"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <FormField
-                      control={form.control}
-                      name="linkedinUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>LinkedIn URL</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="https://linkedin.com/in/..."
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="githubUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>GitHub URL</FormLabel>
-                          <FormControl>
-                            <Input placeholder="https://github.com/..." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="portfolioUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Portfolio URL</FormLabel>
-                          <FormControl>
-                            <Input placeholder="https://..." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="bio"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Short Bio</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Tell us a bit about yourself and what you're looking for..."
-                            className="min-h-[100px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
-            </form>
-          </Form>
-        )}
-
-        {step === 2 && (
+        {draft.step === 1 && (
           <div className="space-y-6">
             <div>
-              <h2 className="font-display text-xl font-semibold">
-                Your Best Startup Matches
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                We ranked startups from your profile. Keep up to 5 for email generation.
+              <h2 className="font-display text-2xl font-semibold">Upload your resume</h2>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                Scout will parse the resume into a structured candidate profile, then you can edit it before matching against live YC roles.
               </p>
             </div>
 
-            <StartupSelector
-              startups={matchedStartups}
-              selectedIds={selectedStartups}
-              onSelectionChange={setSelectedStartups}
-              maxSelection={5}
-            />
+            {draft.resumeName && !resumeFile && (
+              <div className="rounded-2xl border border-border/60 bg-secondary/30 p-4 text-sm text-muted-foreground">
+                Saved draft found for <span className="font-medium text-foreground">{draft.resumeName}</span>. You can continue from the last step or upload a new resume to restart.
+              </div>
+            )}
+
+            <ResumeUpload selectedFile={resumeFile} onFileSelect={setResumeFile} />
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={() => void handleExtractProfile()} disabled={isExtracting || !resumeFile}>
+                {isExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                Extract Profile
+              </Button>
+              {draft.profile && (
+                <Button variant="outline" onClick={() => updateDraft((current) => ({ ...current, step: Math.max(2, current.step) }))}>
+                  Resume already parsed
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
-        {step === 3 && (
+        {draft.step === 2 && (
           <div className="space-y-6">
-            <div>
-              <h2 className="font-display text-xl font-semibold flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                Your Personalized Emails
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Copy these emails and send them from your own email client
-              </p>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="font-display text-2xl font-semibold">Review extracted profile</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Edit anything the parser missed. This version of the profile will drive matching and email generation.
+                </p>
+              </div>
+              {draft.resumeName && (
+                <Badge variant="secondary">{draft.resumeName}</Badge>
+              )}
             </div>
 
-            <EmailPreview
-              emails={generatedEmails}
-              engineerEmail={form.getValues("email")}
+            <div className="grid gap-4 md:grid-cols-2">
+              <Input placeholder="Full name" value={formValues.fullName} onChange={(event) => updateFormValue("fullName", event.target.value)} />
+              <Input type="email" placeholder="Email" value={formValues.email} onChange={(event) => updateFormValue("email", event.target.value)} />
+              <Input placeholder="Phone" value={formValues.phone} onChange={(event) => updateFormValue("phone", event.target.value)} />
+              <Input placeholder="Years of experience" value={formValues.experienceYears} onChange={(event) => updateFormValue("experienceYears", event.target.value)} />
+              <Input placeholder="LinkedIn URL" value={formValues.linkedinUrl} onChange={(event) => updateFormValue("linkedinUrl", event.target.value)} />
+              <Input placeholder="GitHub URL" value={formValues.githubUrl} onChange={(event) => updateFormValue("githubUrl", event.target.value)} />
+              <Input placeholder="Portfolio URL" value={formValues.portfolioUrl} onChange={(event) => updateFormValue("portfolioUrl", event.target.value)} />
+              <Input placeholder="Preferred roles, comma separated" value={formValues.preferredRoles} onChange={(event) => updateFormValue("preferredRoles", event.target.value)} />
+            </div>
+
+            <Input placeholder="Skills, comma separated" value={formValues.skills} onChange={(event) => updateFormValue("skills", event.target.value)} />
+            <Input placeholder="Education" value={formValues.education} onChange={(event) => updateFormValue("education", event.target.value)} />
+            <Textarea
+              placeholder="Short professional summary"
+              value={formValues.summary}
+              onChange={(event) => updateFormValue("summary", event.target.value)}
+              className="min-h-[140px]"
             />
 
-            <div className="flex justify-center pt-4">
-              <Button variant="outline" onClick={handleStartOver}>
-                Generate More Emails
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Button variant="outline" onClick={() => updateDraft((current) => ({ ...current, step: 1 }))}>
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+              <Button onClick={() => void handleMatchTargets()} disabled={isMatching}>
+                {isMatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Find YC Fits
               </Button>
             </div>
           </div>
         )}
 
-        {/* Navigation */}
-        {step < 3 && (
-          <div className="mt-8 flex justify-between">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={handleBack}
-              disabled={step === 1}
-              className={`gap-2 ${step === 1 ? "invisible" : ""}`}
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
+        {draft.step === 3 && (
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="font-display text-2xl font-semibold">Choose your outreach targets</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Job matches are the default. Switch to startup outreach if you want broader company-level emails or the job matches are weak.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant={draft.selectedMode === "jobs" ? "default" : "outline"}
+                  onClick={() => updateDraft((current) => ({ ...current, selectedMode: "jobs", selectedTargetIds: [] }))}
+                >
+                  <Briefcase className="h-4 w-4" />
+                  Jobs
+                </Button>
+                <Button
+                  variant={draft.selectedMode === "startups" ? "default" : "outline"}
+                  onClick={() => updateDraft((current) => ({ ...current, selectedMode: "startups", selectedTargetIds: [] }))}
+                >
+                  <Building2 className="h-4 w-4" />
+                  Startups
+                </Button>
+              </div>
+            </div>
 
-            <Button
-              type="button"
-              variant="default"
-              onClick={handleNext}
-              disabled={isSubmitting || isMatching}
-              className="gap-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {step === 2 ? "Generating..." : "Processing..."}
-                </>
-              ) : isMatching ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Finding Matches...
-                </>
-              ) : (
-                <>
-                  {step === 2 ? "Generate Emails" : "Next"}
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </Button>
+            {shouldSuggestStartups && draft.selectedMode === "jobs" && (
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+                  <p>
+                    The top job matches are relatively weak right now. Startup-level outreach may give you a better first-pass set of companies to contact.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {currentTargets.length === 0 ? (
+              <div className="rounded-2xl border border-border/60 bg-secondary/20 p-8 text-center text-sm text-muted-foreground">
+                No matches are available for this mode yet.
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {currentTargets.map((target) => {
+                  const targetId = target.targetType === "job" ? target.jobId : target.id;
+                  const isSelected = draft.selectedTargetIds.includes(targetId);
+                  const title = target.targetType === "job" ? target.jobTitle : target.name;
+                  const subtitle = target.targetType === "job" ? target.companyName : target.description;
+                  const meta = target.targetType === "job" ? `${target.location} • ${target.jobType}` : target.website;
+
+                  return (
+                    <button
+                      key={`${target.targetType}-${targetId}`}
+                      type="button"
+                      onClick={() => handleToggleTarget(target)}
+                      className={cn(
+                        "rounded-2xl border p-5 text-left transition-all",
+                        isSelected ? "border-primary bg-primary/5" : "border-border/60 hover:border-primary/40 hover:bg-secondary/20",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium text-foreground">{title}</p>
+                            <Badge variant="secondary">{target.matchScore}% fit</Badge>
+                            {target.targetType === "job" && target.companyBatch && <Badge variant="accent">{target.companyBatch}</Badge>}
+                          </div>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {target.targetType === "job" ? target.companyName : subtitle}
+                          </p>
+                        </div>
+                        <div className={cn("mt-1 h-5 w-5 rounded-full border", isSelected ? "border-primary bg-primary" : "border-muted-foreground/40")} />
+                      </div>
+
+                      <p className="mt-3 text-sm text-muted-foreground">{target.targetType === "job" ? target.companyOneLiner || subtitle : subtitle}</p>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {target.fitReasons.map((reason) => (
+                          <Badge key={reason} variant="outline" className="whitespace-normal text-left">
+                            {reason}
+                          </Badge>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+                        <span>{meta}</span>
+                        <span className="inline-flex items-center gap-1">
+                          Review target
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Button variant="outline" onClick={() => updateDraft((current) => ({ ...current, step: 2 }))}>
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+              <Button onClick={() => void handleGenerateEmails()} disabled={isGenerating || selectedTargets.length === 0}>
+                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                Generate Emails
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {draft.step === 4 && (
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-2xl font-semibold">Copy and send</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  These drafts are plain-text outreach emails you can paste directly into your email client.
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => updateDraft((current) => ({ ...current, step: 3 }))}>
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+                <Button variant="ghost" onClick={resetFlow}>
+                  Start Over
+                </Button>
+              </div>
+            </div>
+
+            <EmailPreview emails={draft.generatedEmails} />
           </div>
         )}
       </div>

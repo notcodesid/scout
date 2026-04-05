@@ -9,7 +9,7 @@ const PREVIEW_COUNT = 6;
 
 const JobsPreviewSection = () => {
   const { data, isLoading, isError, error, refetch } = useInfiniteYCJobs(DEFAULT_YC_JOB_CATEGORY);
-  const jobs = flattenJobs(data?.pages).slice(0, PREVIEW_COUNT);
+  const jobs = data?.pages ? flattenJobs(data.pages).slice(0, PREVIEW_COUNT) : [];
 
   return (
     <section id="jobs-preview" className="bg-background">
