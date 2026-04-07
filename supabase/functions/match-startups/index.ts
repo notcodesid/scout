@@ -10,12 +10,17 @@ interface YCCompany {
   name: string;
   slug: string;
   website: string;
-  one_liner: string;
+  all_locations: string;
   long_description: string;
+  one_liner: string;
+  team_size: number;
+  industry: string;
   tags: string[];
   batch: string;
   status: string;
+  launched_at: number;
   isHiring: boolean;
+  small_logo_thumb_url?: string;
 }
 
 function parseList(input?: string): string[] {
@@ -46,7 +51,7 @@ function coerceLegacyCandidate(input: Record<string, unknown>): CandidateProfile
 }
 
 function scoreCompany(company: YCCompany, profile: CandidateProfile): MatchStartupResult {
-  const companyText = `${company.name} ${company.one_liner} ${company.long_description} ${(company.tags || []).join(" ")}`;
+  const companyText = `${company.name} ${company.one_liner} ${company.long_description} ${company.industry} ${(company.tags || []).join(" ")}`;
   const companyTokens = new Set(tokenize(companyText));
   const roleTokens = profile.preferredRoles.flatMap((role) => tokenize(role));
   const keywordTokens = candidateKeywordPool(profile);
@@ -65,19 +70,52 @@ function scoreCompany(company: YCCompany, profile: CandidateProfile): MatchStart
   if (profile.skills.length > 0) {
     fitReasons.push(`Relevant overlap with ${profile.skills.slice(0, 3).join(", ")}.`);
   }
-  fitReasons.push(`Company description and tags align with your resume summary.`);
+  if (company.industry || company.tags?.length) {
+    fitReasons.push(`Company focus aligns with your portfolio summary and skills.`);
+  }
 
   return {
     targetType: "startup",
-    id: company.slug || String(company.id),
+    id: company.id?.toString() || company.slug,
     name: company.name,
     description: company.one_liner || company.long_description || "",
-    website: company.website,
+    website: company.website || `https://www.ycombinator.com/companies/${company.slug}`,
     batch: company.batch,
     tags: company.tags || [],
     matchScore: normalizeScore(rawScore),
     fitReasons: fitReasons.slice(0, 3),
   };
+}
+
+async function fetchCompanies(): Promise<YCCompany[]> {
+  const urls = [
+    "https://yc-oss.github.io/api/companies/hiring.json",
+    "https://yc-oss.github.io/api/companies/all.json",
+  ];
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "Mozilla/5.0 (compatible; ScoutBot/1.0)",
+        },
+      });
+
+      if (!response.ok) {
+        continue;
+      }
+
+      const companies = (await response.json()) as YCCompany[];
+      if (Array.isArray(companies) && companies.length > 0) {
+        return companies;
+      }
+    } catch (error) {
+      console.error("Startup source fetch failed:", url, error);
+    }
+  }
+
+  return [];
 }
 
 Deno.serve(async (req) => {
@@ -92,12 +130,13 @@ Deno.serve(async (req) => {
       : coerceLegacyCandidate(payload.candidate || {});
     const limit = Math.max(1, Math.min(Number(payload.limit) || 8, 20));
 
-    const ycResponse = await fetch("https://www.ycombinator.com/api/companies");
-    if (!ycResponse.ok) {
-      throw new Error(`Failed to fetch YC companies: ${ycResponse.status}`);
+    const companies = await fetchCompanies();
+    if (companies.length === 0) {
+      return new Response(JSON.stringify({ data: [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const companies = (await ycResponse.json()) as YCCompany[];
     const ranked = companies
       .filter((company) => company.status !== "Inactive")
       .map((company) => scoreCompany(company, candidateProfile))

@@ -14,18 +14,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface YCJobListing {
+interface UnifiedJob {
   id: string;
+  source_slug: string;
   title: string;
-  job_type: string;
-  location: string;
-  role_type: string;
   company_name: string;
   company_slug: string;
-  company_batch: string;
   company_one_liner: string;
+  company_logo_url: string | null;
+  company_website_url: string | null;
+  job_type: string;
+  location: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string;
+  remote: string;
+  skills: string[];
+  description: string;
   apply_url: string;
   job_url: string;
+  seniority: string;
+  category: string;
 }
 
 function createAdminClient() {
@@ -41,50 +50,66 @@ function createAdminClient() {
   });
 }
 
-function experienceScore(profile: CandidateProfile, job: YCJobListing) {
-  const seniorityText = `${job.title} ${job.role_type}`.toLowerCase();
+function experienceScore(profile: CandidateProfile, job: UnifiedJob) {
+  const text = `${job.title} ${job.seniority}`.toLowerCase();
   const years = profile.experienceYears || 0;
 
-  if (/(senior|staff|principal|lead)/.test(seniorityText)) {
+  if (/(senior|staff|principal|lead|architect)/.test(text)) {
     return years >= 5 ? 16 : years >= 3 ? 9 : 2;
   }
 
-  if (/(intern|new grad|junior|entry)/.test(seniorityText)) {
+  if (/(intern|new grad|junior|entry|associate|fresher)/.test(text)) {
     return years <= 2 ? 16 : 10;
   }
 
   return years >= 2 ? 14 : 10;
 }
 
-function scoreJob(job: YCJobListing, profile: CandidateProfile): MatchJobResult {
+function scoreJob(job: UnifiedJob, profile: CandidateProfile): MatchJobResult {
   const roleNeedles = profile.preferredRoles.flatMap((role) => tokenize(role));
   const keywordPool = candidateKeywordPool(profile);
-  const jobText = `${job.title} ${job.role_type} ${job.company_name} ${job.company_one_liner} ${job.location}`;
-  const jobTokens = new Set(tokenize(jobText));
+  const allText = [
+    job.title,
+    job.company_name,
+    job.company_one_liner,
+    job.location,
+    job.category,
+    job.skills?.join(" ") || "",
+    job.description,
+    job.remote,
+  ].join(" ");
+  const jobTokens = new Set(tokenize(allText));
 
   const roleOverlap = keywordOverlap(jobTokens, roleNeedles);
   const keywordScore = keywordOverlap(jobTokens, keywordPool);
-  const primarySkills = profile.skills.slice(0, 5);
-  const skillOverlap = keywordOverlap(jobTokens, primarySkills.flatMap((skill) => tokenize(skill)));
+  const skillTokens = profile.skills.flatMap((s) => tokenize(s));
+  const skillOverlap = keywordOverlap(jobTokens, skillTokens);
 
-  let rawScore = 24;
+  let rawScore = 20;
   rawScore += roleOverlap * 18;
   rawScore += Math.min(keywordScore * 5, 25);
   rawScore += Math.min(skillOverlap * 10, 20);
   rawScore += experienceScore(profile, job);
 
+  if (job.remote === "Remote") {
+    rawScore += 5;
+  }
+
   const fitReasons: string[] = [];
   if (roleOverlap > 0) {
-    fitReasons.push(`Role alignment with ${profile.preferredRoles[0] || "your preferred engineering track"}.`);
+    fitReasons.push(`Role alignment with ${profile.preferredRoles[0] || "your target track"}.`);
   }
-  if (skillOverlap > 0 && primarySkills.length > 0) {
-    fitReasons.push(`Skill overlap around ${primarySkills.slice(0, 3).join(", ")}.`);
+  if (skillOverlap > 0 && profile.skills.length > 0) {
+    fitReasons.push(`Skill overlap around ${profile.skills.slice(0, 3).join(", ")}.`);
   }
   if (job.company_one_liner) {
-    fitReasons.push(`Company focus overlaps with your profile summary and resume keywords.`);
+    fitReasons.push(`Company focus matches your profile and resume keywords.`);
+  }
+  if (job.remote === "Remote") {
+    fitReasons.push("Remote-friendly role — a strong signal for distributed teams.");
   }
   if (fitReasons.length === 0) {
-    fitReasons.push("Relevant engineering fit based on role title, company focus, and experience level.");
+    fitReasons.push("Relevant fit based on role title, company focus, and experience level.");
   }
 
   return {
@@ -93,10 +118,10 @@ function scoreJob(job: YCJobListing, profile: CandidateProfile): MatchJobResult 
     jobTitle: job.title,
     companyName: job.company_name,
     companySlug: job.company_slug,
-    companyBatch: job.company_batch,
+    companyBatch: "",
     companyOneLiner: job.company_one_liner,
     location: job.location,
-    roleType: job.role_type,
+    roleType: job.seniority,
     jobType: job.job_type,
     jobUrl: job.job_url,
     applyUrl: job.apply_url,
@@ -111,28 +136,54 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { candidateProfile, limit = 12 } = await req.json();
+    const { candidateProfile, limit = 12, sources, remoteOnly } = await req.json();
     const profile = coerceCandidateProfile(candidateProfile || {});
 
     const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("yc_job_listings")
-      .select("id, title, job_type, location, role_type, company_name, company_slug, company_batch, company_one_liner, apply_url, job_url")
-      .order("rank", { ascending: true })
-      .limit(200);
+
+    let query = supabase
+      .from("job_listings")
+      .select(
+        "id, source_slug, title, company_name, company_slug, company_one_liner, company_logo_url, company_website_url, job_type, location, salary_min, salary_max, salary_currency, remote, skills, description, apply_url, job_url, seniority, category",
+      )
+      .limit(300);
+
+    if (sources && Array.isArray(sources) && sources.length > 0) {
+      query = query.in("source_slug", sources);
+    }
+
+    if (remoteOnly) {
+      query = query.eq("remote", "Remote");
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw error;
     }
 
-    const jobs = ((data || []) as YCJobListing[]).map((job) => scoreJob(job, profile));
+    const jobs = ((data || []) as UnifiedJob[]).map((job) => scoreJob(job, profile));
     const ranked = jobs
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, Math.max(1, Math.min(limit, 20)));
 
-    return new Response(JSON.stringify({ data: ranked }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const sourceCounts = ranked.reduce(
+      (acc, job) => {
+        const src = job.jobUrl?.split("/")[2]?.replace("www.", "").split(".")[0] || "other";
+        acc[src] = (acc[src] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    return new Response(
+      JSON.stringify({
+        data: ranked,
+        totalScored: jobs.length,
+        sourceBreakdown: sourceCounts,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (error) {
     console.error("Error in match-jobs:", error);
     return new Response(

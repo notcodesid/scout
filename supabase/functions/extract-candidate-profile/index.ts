@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { CandidateProfile, coerceCandidateProfile } from "../_shared/mvp1.ts";
+import { generateJsonFromGemini } from "../_shared/gemini.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -125,38 +126,282 @@ function inferProfileFromText(text: string, fileName = ""): CandidateProfile {
   });
 }
 
+function toBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+}
+
+function decodeHtmlEntities(input: string): string {
+  return input
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+function stripHtmlToText(html: string): string {
+  return decodeHtmlEntities(
+    html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+      .replace(/<(br|hr)\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|section|article|main|header|footer|nav|aside|li|ul|ol|h1|h2|h3|h4|h5|h6)>/gi, "\n")
+      .replace(/<li[^>]*>/gi, "- ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/[^\S\r\n]+/g, " ")
+      .replace(/\n{3,}/g, "\n\n"),
+  )
+    .trim();
+}
+
+function extractLinkText(fragment: string): string {
+  return stripHtmlToText(fragment).replace(/\s+/g, " ").trim();
+}
+
+function extractHtmlLinks(html: string, baseUrl: string): Array<{ url: string; text: string }> {
+  const links: Array<{ url: string; text: string }> = [];
+  const matches = html.matchAll(/<a[^>]+href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi);
+
+  for (const match of matches) {
+    const href = match[1]?.trim();
+    if (!href || href.startsWith("javascript:") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+      continue;
+    }
+
+    try {
+      const resolved = new URL(href, baseUrl).toString();
+      links.push({
+        url: resolved,
+        text: extractLinkText(match[2] || ""),
+      });
+    } catch {
+      // Skip invalid URLs.
+    }
+  }
+
+  return links;
+}
+
+function pickRelevantPortfolioLinks(links: Array<{ url: string; text: string }>, rootUrl: string): string[] {
+  const root = new URL(rootUrl);
+  const keywords = /(about|project|work|experience|skill|stack|contact|blog|writing|portfolio|resume)/i;
+  const seen = new Set<string>();
+
+  return links
+    .filter((link) => {
+      try {
+        const parsed = new URL(link.url);
+        return parsed.origin === root.origin && !parsed.hash;
+      } catch {
+        return false;
+      }
+    })
+    .filter((link) => link.url !== root.toString())
+    .sort((a, b) => {
+      const aScore = Number(keywords.test(`${a.text} ${a.url}`));
+      const bScore = Number(keywords.test(`${b.text} ${b.url}`));
+      return bScore - aScore || a.url.length - b.url.length;
+    })
+    .filter((link) => {
+      if (seen.has(link.url)) return false;
+      seen.add(link.url);
+      return true;
+    })
+    .slice(0, 4)
+    .map((link) => link.url);
+}
+
+async function fetchWebsitePage(url: string) {
+  const response = await fetch(url, {
+    redirect: "follow",
+    headers: {
+      Accept: "text/html,application/xhtml+xml",
+      "User-Agent": "Mozilla/5.0 (compatible; ScoutBot/1.0)",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response.status}`);
+  }
+
+  const html = await response.text();
+  const pageUrl = response.url || url;
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = titleMatch ? decodeHtmlEntities(titleMatch[1]).trim() : "";
+  const text = stripHtmlToText(html);
+  const links = extractHtmlLinks(html, pageUrl);
+
+  return {
+    url: pageUrl,
+    title,
+    text,
+    links,
+  };
+}
+
+async function fetchPortfolioContent(portfolioUrl: string) {
+  const rootPage = await fetchWebsitePage(portfolioUrl);
+  const relevantLinks = pickRelevantPortfolioLinks(rootPage.links, rootPage.url);
+  const extraPages = await Promise.all(
+    relevantLinks.map(async (url) => {
+      try {
+        return await fetchWebsitePage(url);
+      } catch (error) {
+        console.error("Failed to fetch related portfolio page:", url, error);
+        return null;
+      }
+    }),
+  );
+
+  const pages = [rootPage, ...extraPages.filter(Boolean)];
+  const externalLinks = Array.from(
+    new Set(
+      pages
+        .flatMap((page) => page.links)
+        .map((link) => link.url)
+        .filter((url) => /linkedin\.com|github\.com|twitter\.com|x\.com/i.test(url)),
+    ),
+  );
+
+  const combinedText = pages
+    .map((page) => `page: ${page.url}\ntitle: ${page.title}\ncontent:\n${page.text.slice(0, 3500)}`)
+    .join("\n\n---\n\n")
+    .slice(0, 16000);
+
+  return {
+    canonicalUrl: rootPage.url,
+    externalLinks,
+    combinedText,
+  };
+}
+
+function inferProfileFromWebsiteText(text: string, portfolioUrl: string, externalLinks: string[] = []): CandidateProfile {
+  const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || "";
+  const phone = text.match(/(\+\d{1,3}[\s-]?)?(\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4})/)?.[0] || "";
+  const linkedinUrl = externalLinks.find((link) => /linkedin\.com/i.test(link)) || "";
+  const githubUrl = externalLinks.find((link) => /github\.com/i.test(link)) || "";
+  const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
+  const fullName = lines[0] && lines[0].length < 80 ? lines[0] : new URL(portfolioUrl).hostname.replace(/^www\./, "");
+  const summaryLine = lines.find((line) => line.length > 50 && line.length < 320) || "";
+  const skills = Array.from(
+    new Set(
+      (text.match(/\b(react|typescript|javascript|node|python|java|golang|docker|aws|sql|postgres|next\.js|nextjs|tailwind|graphql|machine learning|llm|ai|nlp|kubernetes|redis|mongodb|figma|swift|kotlin|prisma|express|hono|mongo|postgresql)\b/gi) || [])
+        .map((value) => value.replace(/\bnextjs\b/i, "Next.js")),
+    ),
+  );
+
+  return coerceCandidateProfile({
+    fullName,
+    email,
+    phone,
+    linkedinUrl,
+    githubUrl,
+    portfolioUrl,
+    skills,
+    summary: summaryLine || text.slice(0, 400),
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { resumePath, fileName } = await req.json();
+    const { resumePath, fileName, portfolioUrl } = await req.json();
+    const isPortfolioSource = typeof portfolioUrl === "string" && portfolioUrl.trim().length > 0;
 
-    if (!resumePath) {
-      throw new Error("resumePath is required");
-    }
+    let prompt = "";
+    let extractedText = "";
+    let parsed: Partial<CandidateProfile> | null = null;
 
-    const supabase = createAdminClient();
-    const { data, error } = await supabase.storage.from("resumes").download(resumePath);
+    if (isPortfolioSource) {
+      const normalizedPortfolioUrl = new URL(portfolioUrl).toString();
+      const websiteContent = await fetchPortfolioContent(normalizedPortfolioUrl);
 
-    if (error || !data) {
-      throw new Error("Failed to download resume");
-    }
+      if (!websiteContent.combinedText || websiteContent.combinedText.length < 120) {
+        throw new Error("Could not extract enough public content from the portfolio URL");
+      }
 
-    const pdfBuffer = new Uint8Array(await data.arrayBuffer());
-    const extractedText = extractPdfText(pdfBuffer).slice(0, 12000);
+      prompt = `Extract a candidate profile from this portfolio website content and return strict JSON only.
 
-    if (!extractedText || extractedText.length < 80) {
-      throw new Error("Could not extract enough text from the resume");
-    }
+Schema:
+{
+  "fullName": string,
+  "email": string,
+  "phone": string,
+  "linkedinUrl": string,
+  "githubUrl": string,
+  "portfolioUrl": string,
+  "skills": string[],
+  "experienceYears": number,
+  "education": string,
+  "preferredRoles": string[],
+  "summary": string
+}
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+Rules:
+- Use empty string when a scalar field is missing.
+- Use [] when an array field is missing.
+- Keep summary under 320 characters.
+- Normalize skills and preferredRoles to concise, title-cased phrases.
+- Estimate experienceYears conservatively from the visible public content.
+- Set portfolioUrl to the canonical site URL.
+- Output JSON only.
 
-    const prompt = `Extract a candidate profile from this resume text and return strict JSON only.
+Portfolio URL:
+${websiteContent.canonicalUrl}
+
+Social links:
+${websiteContent.externalLinks.join("\n")}
+
+Website content:
+${websiteContent.combinedText}`;
+
+      extractedText = websiteContent.combinedText.slice(0, 12000);
+
+      try {
+        const content = await generateJsonFromGemini({
+          systemInstruction: "You extract structured candidate data from portfolio websites. Return valid JSON only.",
+          prompt,
+          temperature: 0.1,
+        });
+        parsed = parseJsonObject(content);
+      } catch (error) {
+        console.error("Gemini portfolio parsing failed, using heuristic fallback:", error);
+      }
+
+      parsed = parsed || inferProfileFromWebsiteText(websiteContent.combinedText, websiteContent.canonicalUrl, websiteContent.externalLinks);
+    } else {
+      if (!resumePath) {
+        throw new Error("portfolioUrl or resumePath is required");
+      }
+
+      const supabase = createAdminClient();
+      const { data, error } = await supabase.storage.from("resumes").download(resumePath);
+
+      if (error || !data) {
+        throw new Error("Failed to download resume");
+      }
+
+      const pdfBuffer = new Uint8Array(await data.arrayBuffer());
+      extractedText = extractPdfText(pdfBuffer).slice(0, 12000);
+
+      if (!extractedText || extractedText.length < 80) {
+        throw new Error("Could not extract enough text from the resume");
+      }
+
+      prompt = `Extract a candidate profile from this resume and return strict JSON only.
 
 Schema:
 {
@@ -181,36 +426,47 @@ Rules:
 - Estimate experienceYears conservatively from the resume.
 - Output JSON only.
 
+If the PDF is visually structured, use the actual document content rather than guessing from partial text extraction.`;
+
+      try {
+        const content = await generateJsonFromGemini({
+          systemInstruction: "You extract structured candidate data from resumes. Return valid JSON only.",
+          prompt,
+          parts: [
+            {
+              inline_data: {
+                mime_type: "application/pdf",
+                data: toBase64(pdfBuffer),
+              },
+            },
+          ],
+          temperature: 0.1,
+        });
+        parsed = parseJsonObject(content);
+      } catch (error) {
+        console.error("Gemini PDF parsing failed, falling back to extracted text:", error);
+      }
+
+      if (!parsed) {
+        const textPrompt = `${prompt}
+
 Resume text:
 ${extractedText}`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: "You extract structured candidate data from resumes. Return valid JSON only.",
-          },
-          { role: "user", content: prompt },
-        ],
-      }),
-    });
+        try {
+          const content = await generateJsonFromGemini({
+            systemInstruction: "You extract structured candidate data from resumes. Return valid JSON only.",
+            prompt: textPrompt,
+            temperature: 0.1,
+          });
+          parsed = parseJsonObject(content);
+        } catch (error) {
+          console.error("Gemini text parsing failed, using regex fallback:", error);
+        }
+      }
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("Resume extraction AI error:", aiResponse.status, errorText);
-      throw new Error("Profile extraction failed");
+      parsed = parsed || inferProfileFromText(extractedText, fileName);
     }
-
-    const aiData = await aiResponse.json();
-    const content = aiData.choices?.[0]?.message?.content || "";
-    const parsed = parseJsonObject(content) || inferProfileFromText(extractedText, fileName);
     const profile = coerceCandidateProfile(parsed);
 
     return new Response(

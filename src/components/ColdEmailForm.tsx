@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, ArrowLeft, ArrowRight, Briefcase, Building2, CheckCircle, ExternalLink, Loader2, Sparkles, UploadCloud } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Briefcase, Building2, CheckCircle, ExternalLink, Globe, Loader2, Sparkles } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Badge } from "./ui/badge";
-import ResumeUpload from "./ResumeUpload";
 import EmailPreview from "./EmailPreview";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ApplyFlowDraft, CandidateProfile, GeneratedEmail, JobMatch, MatchTarget, StartupMatch, defaultCandidateProfile, profileToSubmissionPayload } from "@/lib/mvp1";
 import { cn } from "@/lib/utils";
 
-const STORAGE_KEY = "scout-mvp1-apply-draft";
+const STORAGE_KEY = "scout-mvp1-portfolio-draft";
 
 function generateUuid() {
   if (crypto.randomUUID) return crypto.randomUUID();
@@ -37,6 +36,9 @@ function emptyDraft(): ApplyFlowDraft {
   return {
     step: 1,
     submissionId: null,
+    sourceType: null,
+    sourceUrl: null,
+    sourceLabel: null,
     storagePath: null,
     resumeUrl: null,
     resumeName: null,
@@ -106,7 +108,7 @@ const initialFormValues = {
 const ColdEmailForm = () => {
   const { toast } = useToast();
   const [draft, setDraft] = useState<ApplyFlowDraft>(() => readDraft() || emptyDraft());
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [portfolioInputUrl, setPortfolioInputUrl] = useState("");
   const [formValues, setFormValues] = useState(initialFormValues);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
@@ -121,6 +123,12 @@ const ColdEmailForm = () => {
       setFormValues(profileToFormState(draft.profile));
     }
   }, [draft.profile]);
+
+  useEffect(() => {
+    if (draft.sourceType === "portfolio" && draft.sourceUrl) {
+      setPortfolioInputUrl(draft.sourceUrl);
+    }
+  }, [draft.sourceType, draft.sourceUrl]);
 
   const currentTargets = draft.selectedMode === "jobs" ? draft.jobMatches : draft.startupMatches;
   const selectedTargets = useMemo(() => {
@@ -140,15 +148,18 @@ const ColdEmailForm = () => {
   };
 
   const resetFlow = () => {
-    setResumeFile(null);
+    setPortfolioInputUrl("");
     setFormValues(initialFormValues);
     localStorage.removeItem(STORAGE_KEY);
     setDraft(emptyDraft());
   };
 
-  const ensureSubmission = async (profile: CandidateProfile, profileSource: "resume_llm" | "edited") => {
+  const ensureSubmission = async (profile: CandidateProfile, profileSource: "resume_llm" | "portfolio_url" | "edited") => {
     const payload = {
-      ...profileToSubmissionPayload(profile),
+      ...profileToSubmissionPayload({
+        ...profile,
+        portfolioUrl: profile.portfolioUrl || draft.sourceUrl || "",
+      }),
       id: draft.submissionId || generateUuid(),
       resume_url: draft.resumeUrl,
       profile_source: profileSource,
@@ -173,10 +184,24 @@ const ColdEmailForm = () => {
   };
 
   const handleExtractProfile = async () => {
-    if (!resumeFile) {
+    const trimmedUrl = portfolioInputUrl.trim();
+
+    if (!trimmedUrl) {
       toast({
-        title: "Resume required",
-        description: "Upload a PDF resume to continue.",
+        title: "Portfolio URL required",
+        description: "Paste your personal site or portfolio URL to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let normalizedUrl: string;
+    try {
+      normalizedUrl = new URL(trimmedUrl).toString();
+    } catch {
+      toast({
+        title: "Invalid URL",
+        description: "Enter a valid public portfolio URL.",
         variant: "destructive",
       });
       return;
@@ -184,17 +209,9 @@ const ColdEmailForm = () => {
 
     setIsExtracting(true);
     try {
-      const storagePath = `guest/${Date.now()}-${resumeFile.name}`;
-      const { error: uploadError } = await supabase.storage.from("resumes").upload(storagePath, resumeFile);
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data: publicData } = supabase.storage.from("resumes").getPublicUrl(storagePath);
       const { data, error } = await supabase.functions.invoke("extract-candidate-profile", {
         body: {
-          resumePath: storagePath,
-          fileName: resumeFile.name,
+          portfolioUrl: normalizedUrl,
         },
       });
 
@@ -206,22 +223,28 @@ const ColdEmailForm = () => {
       updateDraft((current) => ({
         ...current,
         step: 2,
-        storagePath,
-        resumeUrl: publicData.publicUrl,
-        resumeName: resumeFile.name,
+        sourceType: "portfolio",
+        sourceUrl: normalizedUrl,
+        sourceLabel: new URL(normalizedUrl).hostname,
         profile,
       }));
 
-      await ensureSubmission(profile, "resume_llm");
+      await ensureSubmission(
+        {
+          ...profile,
+          portfolioUrl: profile.portfolioUrl || normalizedUrl,
+        },
+        "portfolio_url",
+      );
 
       toast({
         title: "Profile extracted",
-        description: "Review the extracted candidate data before matching.",
+        description: "Review the extracted portfolio data before matching.",
       });
     } catch (error: unknown) {
       toast({
         title: "Extraction failed",
-        description: getErrorMessage(error, "We could not parse the resume right now."),
+        description: getErrorMessage(error, "We could not parse the portfolio site right now."),
         variant: "destructive",
       });
     } finally {
@@ -245,7 +268,7 @@ const ColdEmailForm = () => {
     try {
       const submissionId = await ensureSubmission(profile, "edited");
 
-      const [jobsResponse, startupsResponse] = await Promise.all([
+      const [jobsResponse, startupsResponse] = await Promise.allSettled([
         supabase.functions.invoke("match-jobs", {
           body: {
             candidateProfile: profile,
@@ -260,8 +283,17 @@ const ColdEmailForm = () => {
         }),
       ]);
 
-      if (jobsResponse.error) throw jobsResponse.error;
-      if (startupsResponse.error) throw startupsResponse.error;
+      if (jobsResponse.status !== "fulfilled") {
+        throw jobsResponse.reason;
+      }
+      if (jobsResponse.value.error) {
+        throw jobsResponse.value.error;
+      }
+
+      const startupMatches =
+        startupsResponse.status === "fulfilled" && !startupsResponse.value.error
+          ? ((startupsResponse.value.data?.data || []) as StartupMatch[])
+          : [];
 
       updateDraft((current) => ({
         ...current,
@@ -270,10 +302,17 @@ const ColdEmailForm = () => {
         profile,
         selectedMode: "jobs",
         selectedTargetIds: [],
-        jobMatches: (jobsResponse.data?.data || []) as JobMatch[],
-        startupMatches: (startupsResponse.data?.data || []) as StartupMatch[],
+        jobMatches: (jobsResponse.value.data?.data || []) as JobMatch[],
+        startupMatches,
         generatedEmails: [],
       }));
+
+      if (startupsResponse.status !== "fulfilled" || startupsResponse.value.error) {
+        toast({
+          title: "Startup fallback unavailable",
+          description: "Job matches are ready. Startup-level fallback is temporarily unavailable.",
+        });
+      }
     } catch (error: unknown) {
       toast({
         title: "Matching failed",
@@ -303,7 +342,7 @@ const ColdEmailForm = () => {
     if (!draft.profile) {
       toast({
         title: "Profile missing",
-        description: "Resume extraction and profile review must be completed first.",
+        description: "Portfolio extraction and profile review must be completed first.",
         variant: "destructive",
       });
       return;
@@ -381,28 +420,38 @@ const ColdEmailForm = () => {
         {draft.step === 1 && (
           <div className="space-y-6">
             <div>
-              <h2 className="font-display text-2xl font-semibold">Upload your resume</h2>
+              <h2 className="font-display text-2xl font-semibold">Paste your portfolio URL</h2>
               <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                Scout will parse the resume into a structured candidate profile, then you can edit it before matching against live YC roles.
+                Scout will fetch your public site, extract the profile context it can find, and then let you review it before matching against live YC roles.
               </p>
             </div>
 
-            {draft.resumeName && !resumeFile && (
+            {draft.sourceLabel && !portfolioInputUrl && (
               <div className="rounded-2xl border border-border/60 bg-secondary/30 p-4 text-sm text-muted-foreground">
-                Saved draft found for <span className="font-medium text-foreground">{draft.resumeName}</span>. You can continue from the last step or upload a new resume to restart.
+                Saved draft found for <span className="font-medium text-foreground">{draft.sourceLabel}</span>. You can continue from the last step or paste a new site to restart.
               </div>
             )}
 
-            <ResumeUpload selectedFile={resumeFile} onFileSelect={setResumeFile} />
+            <div className="space-y-3">
+              <Input
+                type="url"
+                placeholder="https://www.notcodesid.com/"
+                value={portfolioInputUrl}
+                onChange={(event) => setPortfolioInputUrl(event.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Use your personal site, portfolio, or public project site. Resume upload stays in the codebase for MVP2.
+              </p>
+            </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Button onClick={() => void handleExtractProfile()} disabled={isExtracting || !resumeFile}>
-                {isExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+              <Button onClick={() => void handleExtractProfile()} disabled={isExtracting || !portfolioInputUrl.trim()}>
+                {isExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
                 Extract Profile
               </Button>
               {draft.profile && (
                 <Button variant="outline" onClick={() => updateDraft((current) => ({ ...current, step: Math.max(2, current.step) }))}>
-                  Resume already parsed
+                  Portfolio already parsed
                 </Button>
               )}
             </div>
@@ -418,8 +467,8 @@ const ColdEmailForm = () => {
                   Edit anything the parser missed. This version of the profile will drive matching and email generation.
                 </p>
               </div>
-              {draft.resumeName && (
-                <Badge variant="secondary">{draft.resumeName}</Badge>
+              {draft.sourceLabel && (
+                <Badge variant="secondary">{draft.sourceLabel}</Badge>
               )}
             </div>
 

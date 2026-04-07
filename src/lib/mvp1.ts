@@ -60,6 +60,9 @@ export interface GeneratedEmail {
 export interface ApplyFlowDraft {
   step: number;
   submissionId: string | null;
+  sourceType: "portfolio" | "resume" | null;
+  sourceUrl: string | null;
+  sourceLabel: string | null;
   storagePath: string | null;
   resumeUrl: string | null;
   resumeName: string | null;

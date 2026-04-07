@@ -3,13 +3,19 @@ import { Briefcase, Loader2 } from "lucide-react";
 import JobCard from "@/components/JobCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DEFAULT_YC_JOB_CATEGORY, flattenJobs, useInfiniteYCJobs } from "@/hooks/use-yc-jobs";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useJobs } from "@/hooks/use-jobs";
 
 const PREVIEW_COUNT = 6;
 
 const JobsPreviewSection = () => {
-  const { data, isLoading, isError, error, refetch } = useInfiniteYCJobs(DEFAULT_YC_JOB_CATEGORY);
-  const jobs = data?.pages ? flattenJobs(data.pages).slice(0, PREVIEW_COUNT) : [];
+  const { data, isLoading, isError, error, refetch } = useInfiniteQuery({
+    ...useJobs({ sources: ["yc", "wellfound", "remoteok", "hn"], limit: PREVIEW_COUNT }),
+    initialPageParam: 0,
+    getNextPageParam: () => undefined,
+  });
+
+  const jobs = data?.pages.flatMap((p) => p.jobs).slice(0, PREVIEW_COUNT) ?? [];
 
   return (
     <section id="jobs-preview" className="bg-background">
@@ -17,13 +23,13 @@ const JobsPreviewSection = () => {
         <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <Badge variant="accent" className="rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em]">
-              Real YC Jobs
+              Jobs from Multiple Sources
             </Badge>
             <h2 className="mt-5 font-display text-3xl font-semibold tracking-tight md:text-4xl">
-              Browse live roles from Work at a Startup
+              Browse roles from 10+ job boards
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              See current YC startup openings directly on Scout before you generate outreach.
+              YC, Wellfound, Indeed, LinkedIn, Remote OK, and more — aggregated in one place.
             </p>
           </div>
 
@@ -45,7 +51,7 @@ const JobsPreviewSection = () => {
             </div>
             <h3 className="mt-5 font-display text-2xl font-semibold">Failed to load jobs</h3>
             <p className="mt-3 text-muted-foreground">
-              {error instanceof Error ? error.message : "The YC jobs preview did not load."}
+              {error instanceof Error ? error.message : "Could not load jobs preview."}
             </p>
             <Button variant="outline" className="mt-6 rounded-full" onClick={() => void refetch()}>
               Retry
@@ -56,7 +62,7 @@ const JobsPreviewSection = () => {
         {jobs.length > 0 && (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {jobs.map((job, index) => (
-              <JobCard key={`${job.id}-${job.companySlug}`} job={job} index={index} />
+              <JobCard key={`${job.id}-${job.source}`} job={job} index={index} />
             ))}
           </div>
         )}
