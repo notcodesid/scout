@@ -88,7 +88,12 @@ async function fetchJobs(
 
   const response = await fetchWithTimeout(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-jobs?${params.toString()}`,
-    { method: "GET" },
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+    },
     FETCH_TIMEOUT_MS,
   );
 
