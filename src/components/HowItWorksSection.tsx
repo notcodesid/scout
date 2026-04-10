@@ -3,21 +3,21 @@ import { ArrowRight } from "lucide-react";
 const steps = [
   {
     number: "01",
-    title: "Browse YC Roles",
+    title: "Gather Jobs",
     description:
-      "Start with live roles from YC startups, grouped so you can scan openings without bouncing across dozens of company sites.",
+      "Start with live roles pulled together from multiple sources so the search happens in one place instead of ten tabs.",
   },
   {
     number: "02",
-    title: "Understand The Fit",
+    title: "Review Your Profile",
     description:
-      "Open the roles that match your background, compare companies quickly, and focus on the opportunities worth real attention.",
+      "Paste a portfolio link, inspect the extracted profile, and fix anything that would weaken the match quality.",
   },
   {
     number: "03",
-    title: "Move Fast",
+    title: "Send With Intent",
     description:
-      "Use Scout as your launchpad for startup discovery now, with a cleaner path into outreach and application support as the product expands.",
+      "Pick only the roles that genuinely fit, then copy the draft email and send it yourself with final judgment.",
   },
 ];
 
@@ -49,7 +49,7 @@ const HowItWorksSection = () => {
             </svg>
           </div>
           <h2 className="font-display text-3xl tracking-tight text-foreground md:text-5xl">
-            A simpler way to find startup roles{" "}
+            A simpler way to find roles{" "}
             <span className="relative inline-block">
               <span className="relative z-10">worth chasing</span>
               <svg
@@ -68,7 +68,7 @@ const HowItWorksSection = () => {
             </span>
           </h2>
           <p className="mt-5 text-lg text-muted-foreground">
-            Scout is focused on one thing right now: helping you discover strong YC startup opportunities fast.
+            Scout is focused on one thing right now: turning messy job discovery into a tighter shortlist and a sendable draft.
           </p>
         </div>
 

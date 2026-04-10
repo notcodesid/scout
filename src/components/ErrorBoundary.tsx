@@ -1,6 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Home, RefreshCw, AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -38,8 +37,7 @@ class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <Card className="max-w-lg w-full border-border/50 bg-card/50 backdrop-blur-sm">
-            <CardContent className="pt-8 pb-8 text-center space-y-6">
+          <div className="max-w-lg w-full rounded-2xl border border-border/50 bg-card/50 p-8 text-center backdrop-blur-sm">
               {/* Error Icon */}
               <div className="flex justify-center">
                 <div className="p-4 rounded-full bg-destructive/10">
@@ -95,8 +93,7 @@ class ErrorBoundary extends Component<Props, State> {
                   Contact Support
                 </a>
               </p>
-            </CardContent>
-          </Card>
+          </div>
         </div>
       );
     }

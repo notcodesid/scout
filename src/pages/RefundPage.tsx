@@ -17,7 +17,7 @@ const RefundPage = () => {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">1. Free Service</h2>
               <p className="text-muted-foreground">
-                Scout is currently a free service. We do not charge users for accessing our platform, browsing startups, or submitting applications.
+                Scout is currently a free service. We do not charge users for accessing the platform, browsing jobs, or generating outreach drafts.
               </p>
             </section>
 
@@ -38,7 +38,7 @@ const RefundPage = () => {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">4. Application Withdrawal</h2>
               <p className="text-muted-foreground">
-                You may withdraw any application you have submitted through our platform by contacting us. However, we cannot guarantee that the startup has not already reviewed your application.
+                Scout does not submit applications on your behalf. Any outreach or application you send remains under your control.
               </p>
             </section>
 

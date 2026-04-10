@@ -1,4 +1,3 @@
-import FeatureEmailPreview from "./FeatureEmailPreview";
 import FeatureGrid from "./FeatureGrid";
 const FeatureShowcase = () => {
   return <section className="relative py-20 md:py-32 overflow-hidden">
@@ -29,7 +28,7 @@ const FeatureShowcase = () => {
           </span>
         </h2>
         <p className="text-muted-foreground text-lg max-w-2xl mx-auto mt-6">
-          Upload your resume, select target companies, and let AI craft personalized outreach that gets responses.
+          Keep the workflow narrow: review the profile, choose the best-fit jobs, and leave the final send decision to the user.
         </p>
       </div>
 

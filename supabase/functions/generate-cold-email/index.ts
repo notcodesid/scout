@@ -8,24 +8,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface SelectedTarget {
-  targetType: "job" | "startup";
-  startupId?: string;
-  startupName?: string;
-  companyName?: string;
+interface SelectedJob {
+  targetType: "job";
+  jobId: string;
+  jobTitle: string;
+  companyName: string;
   companySlug?: string;
-  jobId?: string;
-  jobTitle?: string;
+  companyBatch?: string;
+  companyOneLiner?: string;
   location?: string;
   roleType?: string;
   jobType?: string;
-  companyBatch?: string;
-  companyOneLiner?: string;
   jobUrl?: string;
   applyUrl?: string;
-  description?: string;
-  website?: string;
-  tags?: string[];
   fitReasons?: string[];
 }
 
@@ -42,18 +37,18 @@ function createAdminClient() {
   });
 }
 
-function normalizeTarget(target: SelectedTarget) {
-  const startupId = target.startupId || target.companySlug || target.jobId || "unknown";
-  const startupName = target.startupName || target.companyName || "Unknown Company";
+function normalizeTarget(target: SelectedJob) {
+  const targetId = target.jobId || target.companySlug || "unknown";
+  const companyName = target.companyName || "Unknown Company";
 
   return {
-    targetType: target.targetType,
-    startupId,
-    startupName,
+    targetType: "job" as const,
+    targetId,
+    companyName,
     metadata: {
       ...target,
-      startupId,
-      startupName,
+      targetId,
+      companyName,
     },
   };
 }
@@ -78,31 +73,33 @@ function parseAiJson<T>(content: string): T | null {
   }
 }
 
-function fallbackEmail(profile: CandidateProfile, target: SelectedTarget): Omit<GeneratedEmailOutput, "id"> {
+function fallbackEmail(profile: CandidateProfile, target: SelectedJob): Omit<GeneratedEmailOutput, "id"> {
   const normalized = normalizeTarget(target);
-  const jobReference = target.targetType === "job" && target.jobTitle ? ` for the ${target.jobTitle} role` : "";
-  const fitSummary = (target.fitReasons || []).slice(0, 2).join(" ") || `Your profile aligns with ${normalized.startupName}${jobReference}.`;
+  const roleLabel = target.jobTitle ? ` for the ${target.jobTitle} role` : "";
+  const fitSummary =
+    (target.fitReasons || []).slice(0, 2).join(" ") ||
+    `Your profile aligns with ${normalized.companyName}${roleLabel}.`;
   const subjectOptions = [
-    `${profile.fullName || "Candidate"} interested in ${normalized.startupName}${jobReference}`,
-    `${target.jobTitle || "Engineer"} application for ${normalized.startupName}`,
-    `Potential fit for ${normalized.startupName}`,
+    `${profile.fullName || "Candidate"} interested in ${normalized.companyName}${roleLabel}`,
+    `${target.jobTitle || "Engineer"} application for ${normalized.companyName}`,
+    `Potential fit for ${normalized.companyName}`,
   ];
-  const body = `Hi ${normalized.startupName} team,
+  const body = `Hi ${normalized.companyName} team,
 
-I’m ${profile.fullName || "an engineer"} and I’m reaching out about ${normalized.startupName}${jobReference}. My background in ${profile.skills.slice(0, 3).join(", ") || "software engineering"} and ${profile.summary || "building product-focused software"} feels relevant to what you’re building.
+I’m ${profile.fullName || "an engineer"} and I’m reaching out about${roleLabel || " the role on your team"}. My background in ${profile.skills.slice(0, 3).join(", ") || "software engineering"} and ${profile.summary || "building product-focused software"} looks relevant to the work.
 
 ${fitSummary}
 
-If helpful, I’d love to share more context and see whether there might be a fit.
+If helpful, I’d love to share a few relevant projects and see whether there might be a fit.
 
 Best,
 ${profile.fullName || ""}
 ${profile.email || ""}`.trim();
 
   return {
-    targetType: normalized.metadata.targetType,
-    startupId: normalized.startupId,
-    startupName: normalized.startupName,
+    targetType: "job",
+    targetId: normalized.targetId,
+    companyName: normalized.companyName,
     subject: subjectOptions[0],
     subjectOptions,
     fitSummary,
@@ -118,7 +115,7 @@ serve(async (req) => {
 
   try {
     const { submissionId, candidateProfile, selectedTargets, userId } = await req.json();
-    const targets = Array.isArray(selectedTargets) ? (selectedTargets as SelectedTarget[]) : [];
+    const targets = Array.isArray(selectedTargets) ? (selectedTargets as SelectedJob[]) : [];
 
     if (targets.length === 0) {
       throw new Error("At least one selected target is required");
@@ -149,16 +146,18 @@ serve(async (req) => {
         experienceYears: submission.experience_years || 0,
         education: submission.education || "",
         preferredRoles: submission.preferred_roles || [],
-        summary: typeof submission.extracted_profile === "object" && submission.extracted_profile && "summary" in submission.extracted_profile
-          ? String(submission.extracted_profile.summary || "")
-          : submission.bio || "",
+        summary:
+          typeof submission.extracted_profile === "object" && submission.extracted_profile && "summary" in submission.extracted_profile
+            ? String(submission.extracted_profile.summary || "")
+            : submission.bio || "",
       });
     }
 
     const generated: GeneratedEmailOutput[] = [];
 
     for (const target of targets) {
-      const normalized = normalizeTarget(target);
+      let packageOutput = fallbackEmail(profile, target);
+
       const prompt = `Generate a structured cold outreach package for a candidate.
 
 Return strict JSON only:
@@ -174,7 +173,7 @@ Rules:
 - subjectOptions: exactly 3 concise subject lines.
 - subject: choose the best subject from subjectOptions.
 - body: under 150 words, plain text only, no markdown, direct CTA at the end.
-- Mention the company and specific role when targetType is "job".
+- Mention the company and specific role.
 - Sound human and specific, not salesy.
 
 Candidate:
@@ -182,8 +181,6 @@ ${JSON.stringify(profile, null, 2)}
 
 Target:
 ${JSON.stringify(target, null, 2)}`;
-
-      let packageOutput = fallbackEmail(profile, target);
 
       try {
         const content = await generateJsonFromGemini({
@@ -210,14 +207,14 @@ ${JSON.stringify(target, null, 2)}`;
         .from("generated_emails")
         .insert({
           submission_id: submissionId || null,
-          startup_id: normalized.startupId,
-          startup_name: normalized.startupName,
+          startup_id: packageOutput.targetId,
+          startup_name: packageOutput.companyName,
           subject: packageOutput.subject,
           body: packageOutput.body,
           status: "generated",
           user_id: userId || null,
           response_status: "not_sent",
-          target_type: normalized.metadata.targetType,
+          target_type: "job",
           target_metadata: packageOutput.targetMetadata,
           fit_summary: packageOutput.fitSummary,
           subject_options: packageOutput.subjectOptions,

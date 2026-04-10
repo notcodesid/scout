@@ -29,23 +29,11 @@ export interface MatchJobResult {
   fitReasons: string[];
 }
 
-export interface MatchStartupResult {
-  targetType: "startup";
-  id: string;
-  name: string;
-  description: string;
-  website: string;
-  batch?: string;
-  tags: string[];
-  matchScore: number;
-  fitReasons: string[];
-}
-
 export interface GeneratedEmailOutput {
   id?: string;
-  targetType: "job" | "startup";
-  startupId: string;
-  startupName: string;
+  targetType: "job";
+  targetId: string;
+  companyName: string;
   subject: string;
   subjectOptions: string[];
   fitSummary: string;

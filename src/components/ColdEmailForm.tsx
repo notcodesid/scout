@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, ArrowLeft, ArrowRight, Briefcase, Building2, CheckCircle, ExternalLink, Globe, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle, ExternalLink, Globe, Loader2, Sparkles } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -7,7 +7,7 @@ import { Badge } from "./ui/badge";
 import EmailPreview from "./EmailPreview";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ApplyFlowDraft, CandidateProfile, GeneratedEmail, JobMatch, MatchTarget, StartupMatch, defaultCandidateProfile, profileToSubmissionPayload } from "@/lib/mvp1";
+import { ApplyFlowDraft, CandidateProfile, GeneratedEmail, JobMatch, defaultCandidateProfile, profileToSubmissionPayload } from "@/lib/mvp1";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "scout-mvp1-portfolio-draft";
@@ -36,17 +36,11 @@ function emptyDraft(): ApplyFlowDraft {
   return {
     step: 1,
     submissionId: null,
-    sourceType: null,
     sourceUrl: null,
     sourceLabel: null,
-    storagePath: null,
-    resumeUrl: null,
-    resumeName: null,
     profile: null,
-    selectedMode: "jobs",
-    selectedTargetIds: [],
+    selectedJobIds: [],
     jobMatches: [],
-    startupMatches: [],
     generatedEmails: [],
   };
 }
@@ -125,19 +119,15 @@ const ColdEmailForm = () => {
   }, [draft.profile]);
 
   useEffect(() => {
-    if (draft.sourceType === "portfolio" && draft.sourceUrl) {
+    if (draft.sourceUrl) {
       setPortfolioInputUrl(draft.sourceUrl);
     }
-  }, [draft.sourceType, draft.sourceUrl]);
+  }, [draft.sourceUrl]);
 
-  const currentTargets = draft.selectedMode === "jobs" ? draft.jobMatches : draft.startupMatches;
-  const selectedTargets = useMemo(() => {
-    const selectedIds = new Set(draft.selectedTargetIds);
-    return currentTargets.filter((target) => selectedIds.has(target.targetType === "job" ? target.jobId : target.id));
-  }, [currentTargets, draft.selectedTargetIds]);
-
-  const topJobScore = draft.jobMatches[0]?.matchScore || 0;
-  const shouldSuggestStartups = draft.jobMatches.length === 0 || topJobScore < 55;
+  const selectedJobs = useMemo(() => {
+    const selectedIds = new Set(draft.selectedJobIds);
+    return draft.jobMatches.filter((job) => selectedIds.has(job.jobId));
+  }, [draft.jobMatches, draft.selectedJobIds]);
 
   const updateDraft = (updater: (current: ApplyFlowDraft) => ApplyFlowDraft) => {
     setDraft((current) => updater(current));
@@ -154,14 +144,14 @@ const ColdEmailForm = () => {
     setDraft(emptyDraft());
   };
 
-  const ensureSubmission = async (profile: CandidateProfile, profileSource: "resume_llm" | "portfolio_url" | "edited") => {
+  const ensureSubmission = async (profile: CandidateProfile, profileSource: "portfolio_url" | "edited") => {
     const payload = {
       ...profileToSubmissionPayload({
         ...profile,
         portfolioUrl: profile.portfolioUrl || draft.sourceUrl || "",
       }),
       id: draft.submissionId || generateUuid(),
-      resume_url: draft.resumeUrl,
+      resume_url: null,
       profile_source: profileSource,
       user_id: null,
     };
@@ -223,9 +213,8 @@ const ColdEmailForm = () => {
       updateDraft((current) => ({
         ...current,
         step: 2,
-        sourceType: "portfolio",
         sourceUrl: normalizedUrl,
-        sourceLabel: new URL(normalizedUrl).hostname,
+        sourceLabel: new URL(normalizedUrl).hostname.replace(/^www\./, ""),
         profile,
       }));
 
@@ -239,7 +228,7 @@ const ColdEmailForm = () => {
 
       toast({
         title: "Profile extracted",
-        description: "Review the extracted portfolio data before matching.",
+        description: "Review the extracted profile before matching.",
       });
     } catch (error: unknown) {
       toast({
@@ -252,7 +241,7 @@ const ColdEmailForm = () => {
     }
   };
 
-  const handleMatchTargets = async () => {
+  const handleMatchJobs = async () => {
     const profile = buildProfileFromForm(formValues);
 
     if (!profile.fullName || !profile.email) {
@@ -268,55 +257,30 @@ const ColdEmailForm = () => {
     try {
       const submissionId = await ensureSubmission(profile, "edited");
 
-      const [jobsResponse, startupsResponse] = await Promise.allSettled([
-        supabase.functions.invoke("match-jobs", {
-          body: {
-            candidateProfile: profile,
-            limit: 10,
-          },
-        }),
-        supabase.functions.invoke("match-startups", {
-          body: {
-            candidateProfile: profile,
-            limit: 8,
-          },
-        }),
-      ]);
+      const { data, error } = await supabase.functions.invoke("match-jobs", {
+        body: {
+          candidateProfile: profile,
+          limit: 12,
+        },
+      });
 
-      if (jobsResponse.status !== "fulfilled") {
-        throw jobsResponse.reason;
+      if (error) {
+        throw error;
       }
-      if (jobsResponse.value.error) {
-        throw jobsResponse.value.error;
-      }
-
-      const startupMatches =
-        startupsResponse.status === "fulfilled" && !startupsResponse.value.error
-          ? ((startupsResponse.value.data?.data || []) as StartupMatch[])
-          : [];
 
       updateDraft((current) => ({
         ...current,
         step: 3,
         submissionId,
         profile,
-        selectedMode: "jobs",
-        selectedTargetIds: [],
-        jobMatches: (jobsResponse.value.data?.data || []) as JobMatch[],
-        startupMatches,
+        selectedJobIds: [],
+        jobMatches: (data?.data || []) as JobMatch[],
         generatedEmails: [],
       }));
-
-      if (startupsResponse.status !== "fulfilled" || startupsResponse.value.error) {
-        toast({
-          title: "Startup fallback unavailable",
-          description: "Job matches are ready. Startup-level fallback is temporarily unavailable.",
-        });
-      }
     } catch (error: unknown) {
       toast({
         title: "Matching failed",
-        description: getErrorMessage(error, "We could not rank YC jobs right now."),
+        description: getErrorMessage(error, "We could not rank jobs right now."),
         variant: "destructive",
       });
     } finally {
@@ -324,16 +288,15 @@ const ColdEmailForm = () => {
     }
   };
 
-  const handleToggleTarget = (target: MatchTarget) => {
-    const id = target.targetType === "job" ? target.jobId : target.id;
+  const handleToggleJob = (job: JobMatch) => {
     updateDraft((current) => {
-      const selected = current.selectedTargetIds.includes(id)
-        ? current.selectedTargetIds.filter((item) => item !== id)
-        : [...current.selectedTargetIds, id];
+      const selectedJobIds = current.selectedJobIds.includes(job.jobId)
+        ? current.selectedJobIds.filter((item) => item !== job.jobId)
+        : [...current.selectedJobIds, job.jobId];
 
       return {
         ...current,
-        selectedTargetIds: selected,
+        selectedJobIds,
       };
     });
   };
@@ -342,16 +305,16 @@ const ColdEmailForm = () => {
     if (!draft.profile) {
       toast({
         title: "Profile missing",
-        description: "Portfolio extraction and profile review must be completed first.",
+        description: "Profile extraction and review must be completed first.",
         variant: "destructive",
       });
       return;
     }
 
-    if (selectedTargets.length === 0) {
+    if (selectedJobs.length === 0) {
       toast({
-        title: "Select at least one target",
-        description: "Choose the jobs or startups you want to generate outreach for.",
+        title: "Select at least one job",
+        description: "Choose the roles you want draft emails for.",
         variant: "destructive",
       });
       return;
@@ -363,7 +326,7 @@ const ColdEmailForm = () => {
         body: {
           submissionId: draft.submissionId,
           candidateProfile: draft.profile,
-          selectedTargets,
+          selectedTargets: selectedJobs,
           userId: null,
         },
       });
@@ -410,9 +373,9 @@ const ColdEmailForm = () => {
       </div>
 
       <div className="mb-8 flex justify-between text-xs uppercase tracking-[0.18em] text-muted-foreground">
-        <span>Upload Resume</span>
+        <span>Add Profile</span>
         <span>Review Profile</span>
-        <span>Select Targets</span>
+        <span>Select Jobs</span>
         <span>Copy Emails</span>
       </div>
 
@@ -422,7 +385,7 @@ const ColdEmailForm = () => {
             <div>
               <h2 className="font-display text-2xl font-semibold">Paste your portfolio URL</h2>
               <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                Scout will fetch your public site, extract the profile context it can find, and then let you review it before matching against live YC roles.
+                Scout fetches your public site, extracts the profile context it can find, and then lets you review it before matching against live roles.
               </p>
             </div>
 
@@ -440,7 +403,7 @@ const ColdEmailForm = () => {
                 onChange={(event) => setPortfolioInputUrl(event.target.value)}
               />
               <p className="text-sm text-muted-foreground">
-                Use your personal site, portfolio, or public project site. Resume upload stays in the codebase for MVP2.
+                Use your personal site, portfolio, or public project site.
               </p>
             </div>
 
@@ -451,7 +414,7 @@ const ColdEmailForm = () => {
               </Button>
               {draft.profile && (
                 <Button variant="outline" onClick={() => updateDraft((current) => ({ ...current, step: Math.max(2, current.step) }))}>
-                  Portfolio already parsed
+                  Use saved draft
                 </Button>
               )}
             </div>
@@ -464,7 +427,7 @@ const ColdEmailForm = () => {
               <div>
                 <h2 className="font-display text-2xl font-semibold">Review extracted profile</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Edit anything the parser missed. This version of the profile will drive matching and email generation.
+                  Edit anything the parser missed. This reviewed version drives matching and email generation.
                 </p>
               </div>
               {draft.sourceLabel && (
@@ -497,9 +460,9 @@ const ColdEmailForm = () => {
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
-              <Button onClick={() => void handleMatchTargets()} disabled={isMatching}>
+              <Button onClick={() => void handleMatchJobs()} disabled={isMatching}>
                 {isMatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Find YC Fits
+                Find Job Fits
               </Button>
             </div>
           </div>
@@ -507,60 +470,28 @@ const ColdEmailForm = () => {
 
         {draft.step === 3 && (
           <div className="space-y-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="font-display text-2xl font-semibold">Choose your outreach targets</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Job matches are the default. Switch to startup outreach if you want broader company-level emails or the job matches are weak.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={draft.selectedMode === "jobs" ? "default" : "outline"}
-                  onClick={() => updateDraft((current) => ({ ...current, selectedMode: "jobs", selectedTargetIds: [] }))}
-                >
-                  <Briefcase className="h-4 w-4" />
-                  Jobs
-                </Button>
-                <Button
-                  variant={draft.selectedMode === "startups" ? "default" : "outline"}
-                  onClick={() => updateDraft((current) => ({ ...current, selectedMode: "startups", selectedTargetIds: [] }))}
-                >
-                  <Building2 className="h-4 w-4" />
-                  Startups
-                </Button>
-              </div>
+            <div>
+              <h2 className="font-display text-2xl font-semibold">Choose jobs to draft for</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                These roles are ranked from your reviewed profile. Pick the ones worth sending a manual outreach email to.
+              </p>
             </div>
 
-            {shouldSuggestStartups && draft.selectedMode === "jobs" && (
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
-                  <p>
-                    The top job matches are relatively weak right now. Startup-level outreach may give you a better first-pass set of companies to contact.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {currentTargets.length === 0 ? (
+            {draft.jobMatches.length === 0 ? (
               <div className="rounded-2xl border border-border/60 bg-secondary/20 p-8 text-center text-sm text-muted-foreground">
-                No matches are available for this mode yet.
+                No job matches are available yet. Go back and tighten the profile details before trying again.
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
-                {currentTargets.map((target) => {
-                  const targetId = target.targetType === "job" ? target.jobId : target.id;
-                  const isSelected = draft.selectedTargetIds.includes(targetId);
-                  const title = target.targetType === "job" ? target.jobTitle : target.name;
-                  const subtitle = target.targetType === "job" ? target.companyName : target.description;
-                  const meta = target.targetType === "job" ? `${target.location} • ${target.jobType}` : target.website;
+                {draft.jobMatches.map((job) => {
+                  const isSelected = draft.selectedJobIds.includes(job.jobId);
+                  const meta = [job.location, job.jobType].filter(Boolean).join(" • ");
 
                   return (
                     <button
-                      key={`${target.targetType}-${targetId}`}
+                      key={job.jobId}
                       type="button"
-                      onClick={() => handleToggleTarget(target)}
+                      onClick={() => handleToggleJob(job)}
                       className={cn(
                         "rounded-2xl border p-5 text-left transition-all",
                         isSelected ? "border-primary bg-primary/5" : "border-border/60 hover:border-primary/40 hover:bg-secondary/20",
@@ -569,21 +500,23 @@ const ColdEmailForm = () => {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium text-foreground">{title}</p>
-                            <Badge variant="secondary">{target.matchScore}% fit</Badge>
-                            {target.targetType === "job" && target.companyBatch && <Badge variant="accent">{target.companyBatch}</Badge>}
+                            <p className="font-medium text-foreground">{job.jobTitle}</p>
+                            <Badge variant="secondary">{job.matchScore}% fit</Badge>
+                            {job.companyBatch && <Badge variant="accent">{job.companyBatch}</Badge>}
                           </div>
                           <p className="mt-1 text-sm text-muted-foreground">
-                            {target.targetType === "job" ? target.companyName : subtitle}
+                            {job.companyName}
                           </p>
                         </div>
                         <div className={cn("mt-1 h-5 w-5 rounded-full border", isSelected ? "border-primary bg-primary" : "border-muted-foreground/40")} />
                       </div>
 
-                      <p className="mt-3 text-sm text-muted-foreground">{target.targetType === "job" ? target.companyOneLiner || subtitle : subtitle}</p>
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        {job.companyOneLiner || "Company summary is not available for this role yet."}
+                      </p>
 
                       <div className="mt-4 flex flex-wrap gap-2">
-                        {target.fitReasons.map((reason) => (
+                        {job.fitReasons.map((reason) => (
                           <Badge key={reason} variant="outline" className="whitespace-normal text-left">
                             {reason}
                           </Badge>
@@ -591,11 +524,17 @@ const ColdEmailForm = () => {
                       </div>
 
                       <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
-                        <span>{meta}</span>
-                        <span className="inline-flex items-center gap-1">
-                          Review target
+                        <span>{meta || "Details unavailable"}</span>
+                        <a
+                          href={job.jobUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(event) => event.stopPropagation()}
+                          className="inline-flex items-center gap-1 hover:text-foreground"
+                        >
+                          Review job
                           <ExternalLink className="h-3.5 w-3.5" />
-                        </span>
+                        </a>
                       </div>
                     </button>
                   );
@@ -608,7 +547,7 @@ const ColdEmailForm = () => {
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
-              <Button onClick={() => void handleGenerateEmails()} disabled={isGenerating || selectedTargets.length === 0}>
+              <Button onClick={() => void handleGenerateEmails()} disabled={isGenerating || selectedJobs.length === 0}>
                 {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
                 Generate Emails
               </Button>

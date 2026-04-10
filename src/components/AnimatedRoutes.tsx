@@ -3,7 +3,6 @@ import { AnimatePresence } from 'framer-motion';
 import PageTransition from './PageTransition';
 import Index from '@/pages/Index';
 import JobsPage from '@/pages/JobsPage';
-import StartupDetail from '@/pages/StartupDetail';
 import ApplyPage from '@/pages/ApplyPage';
 import TermsPage from '@/pages/TermsPage';
 import PrivacyPage from '@/pages/PrivacyPage';
@@ -18,7 +17,6 @@ const AnimatedRoutes = () => {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<PageTransition><Index /></PageTransition>} />
         <Route path="/jobs" element={<PageTransition><JobsPage /></PageTransition>} />
-        <Route path="/startup/:id" element={<PageTransition><StartupDetail /></PageTransition>} />
         <Route path="/apply" element={<PageTransition><ApplyPage /></PageTransition>} />
         <Route path="/terms" element={<PageTransition><TermsPage /></PageTransition>} />
         <Route path="/privacy" element={<PageTransition><PrivacyPage /></PageTransition>} />

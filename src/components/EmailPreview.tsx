@@ -43,22 +43,22 @@ const EmailPreview = ({ emails }: EmailPreviewProps) => {
         const fullEmail = `Subject: ${email.subject}\n\n${email.body}`;
 
         return (
-          <article key={`${email.targetType}-${email.startupId}`} className="glass-card overflow-hidden">
+          <article key={`${email.targetType}-${email.targetId}`} className="glass-card overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-secondary/30 px-5 py-4">
               <div>
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-primary" />
-                  <p className="font-medium text-foreground">{email.startupName}</p>
-                  <Badge variant="secondary">{email.targetType === "job" ? "Job" : "Startup"}</Badge>
+                  <p className="font-medium text-foreground">{email.companyName}</p>
+                  <Badge variant="secondary">Job</Badge>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">{email.fitSummary}</p>
               </div>
 
               <Button
                 variant="default"
-                onClick={() => void copy(`${email.startupId}-all`, fullEmail, "Full email copied")}
+                onClick={() => void copy(`${email.targetId}-all`, fullEmail, "Full email copied")}
               >
-                {copiedKey === `${email.startupId}-all` ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copiedKey === `${email.targetId}-all` ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 Copy Email
               </Button>
             </div>
@@ -70,9 +70,9 @@ const EmailPreview = ({ emails }: EmailPreviewProps) => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => void copy(`${email.startupId}-subject`, email.subjectOptions.join("\n"), "Subject options copied")}
+                    onClick={() => void copy(`${email.targetId}-subject`, email.subjectOptions.join("\n"), "Subject options copied")}
                   >
-                    {copiedKey === `${email.startupId}-subject` ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedKey === `${email.targetId}-subject` ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     Copy Subjects
                   </Button>
                 </div>
@@ -91,9 +91,9 @@ const EmailPreview = ({ emails }: EmailPreviewProps) => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => void copy(`${email.startupId}-body`, email.body, "Email body copied")}
+                    onClick={() => void copy(`${email.targetId}-body`, email.body, "Email body copied")}
                   >
-                    {copiedKey === `${email.startupId}-body` ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedKey === `${email.targetId}-body` ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     Copy Body
                   </Button>
                 </div>

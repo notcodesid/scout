@@ -103,7 +103,7 @@ function scoreJob(job: UnifiedJob, profile: CandidateProfile): MatchJobResult {
     fitReasons.push(`Skill overlap around ${profile.skills.slice(0, 3).join(", ")}.`);
   }
   if (job.company_one_liner) {
-    fitReasons.push(`Company focus matches your profile and resume keywords.`);
+    fitReasons.push("Company focus matches your profile keywords and stated interests.");
   }
   if (job.remote === "Remote") {
     fitReasons.push("Remote-friendly role — a strong signal for distributed teams.");

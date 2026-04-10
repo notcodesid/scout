@@ -24,7 +24,7 @@ const TermsPage = () => {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">2. Use of Service</h2>
               <p className="text-muted-foreground">
-                Scout provides a platform to discover tech startups and connect with potential job opportunities. You agree to use this service only for lawful purposes and in accordance with these Terms.
+                Scout provides a platform to discover job opportunities and draft outreach. You agree to use this service only for lawful purposes and in accordance with these Terms.
               </p>
             </section>
 

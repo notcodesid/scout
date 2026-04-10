@@ -87,13 +87,8 @@ async function fetchJobs(
   if (search) params.set("search", search);
 
   const response = await fetchWithTimeout(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-jobs?${params.toString()}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      },
-    },
+    `${import.meta.env.VITE_API_URL}/api/jobs?${params.toString()}`,
+    { method: "GET" },
     FETCH_TIMEOUT_MS,
   );
 

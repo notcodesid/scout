@@ -31,25 +31,11 @@ export interface JobMatch {
   fitReasons: string[];
 }
 
-export interface StartupMatch {
-  targetType: "startup";
-  id: string;
-  name: string;
-  description: string;
-  website: string;
-  batch?: string;
-  tags: string[];
-  matchScore: number;
-  fitReasons: string[];
-}
-
-export type MatchTarget = JobMatch | StartupMatch;
-
 export interface GeneratedEmail {
   id?: string;
-  targetType: "job" | "startup";
-  startupId: string;
-  startupName: string;
+  targetType: "job";
+  targetId: string;
+  companyName: string;
   subject: string;
   subjectOptions: string[];
   fitSummary: string;
@@ -60,17 +46,11 @@ export interface GeneratedEmail {
 export interface ApplyFlowDraft {
   step: number;
   submissionId: string | null;
-  sourceType: "portfolio" | "resume" | null;
   sourceUrl: string | null;
   sourceLabel: string | null;
-  storagePath: string | null;
-  resumeUrl: string | null;
-  resumeName: string | null;
   profile: CandidateProfile | null;
-  selectedMode: "jobs" | "startups";
-  selectedTargetIds: string[];
+  selectedJobIds: string[];
   jobMatches: JobMatch[];
-  startupMatches: StartupMatch[];
   generatedEmails: GeneratedEmail[];
 }
 

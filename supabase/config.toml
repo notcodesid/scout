@@ -1,20 +1,5 @@
 project_id = "vxyharefikvmssmzzexe"
 
-[functions.fetch-yc-startups]
-verify_jwt = false
-
-[functions.fetch-startup-detail]
-verify_jwt = false
-
-[functions.fetch-yc-jobs]
-verify_jwt = false
-
-[functions.sync-yc-jobs]
-verify_jwt = false
-
-[functions.match-startups]
-verify_jwt = false
-
 [functions.extract-candidate-profile]
 verify_jwt = false
 
@@ -22,7 +7,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.generate-cold-email]
-verify_jwt = false
-
-[functions.fetch-jobs]
 verify_jwt = false

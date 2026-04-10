@@ -26,10 +26,10 @@ const JobsPreviewSection = () => {
               Jobs from Multiple Sources
             </Badge>
             <h2 className="mt-5 font-display text-3xl font-semibold tracking-tight md:text-4xl">
-              Browse roles from 10+ job boards
+              Browse roles from one cleaner feed
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              YC, Wellfound, Indeed, LinkedIn, Remote OK, and more — aggregated in one place.
+              YC, Wellfound, Indeed, LinkedIn, Remote OK, and more, without the usual tab-hopping.
             </p>
           </div>
 

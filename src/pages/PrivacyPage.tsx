@@ -24,14 +24,14 @@ const PrivacyPage = () => {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">2. How We Use Your Information</h2>
               <p className="text-muted-foreground">
-                We use the information we collect to provide, maintain, and improve our services, to communicate with you, and to connect you with potential job opportunities at tech startups.
+                We use the information we collect to provide, maintain, and improve our services, to communicate with you, and to help you evaluate potential job opportunities.
               </p>
             </section>
 
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">3. Information Sharing</h2>
               <p className="text-muted-foreground">
-                We may share your information with startups you apply to or express interest in. We do not sell your personal information to third parties.
+                We do not sell your personal information to third parties. If sharing flows are introduced later, this policy will be updated before those flows go live.
               </p>
             </section>
 

@@ -1,26 +1,17 @@
 import { Mail } from "lucide-react";
 
-const previewSubject = "can i help build fast?";
+const previewSubject = "Frontend engineer interested in the product role at [company]";
 
 const previewBody = `hi [name],
 
-tldr;
+i'm reaching out about the [job title] role at [company].
 
-i really like what you're building.
-i don't have many hobbies outside coding.
-not great at a lot of things, but building products is something i keep coming back to.
+my background in react, typescript, and shipping product-facing features looks close to what the role is asking for, especially around fast iteration and owning frontend details.
 
-i enjoy the 0 -> 1 phase the most.
-figuring things out, shipping, breaking, fixing - repeating that loop.
+if you're still hiring, i'd love to share a few relevant projects and see whether there could be a fit.
 
-not reaching out with a perfect resume.
-just wanted to ask -
-
-are you looking for someone who can come in, build fast, and figure things out?
-
-if yes, i'd love to help.
-
-- [your name]`;
+best,
+[your name]`;
 
 const FeatureEmailPreview = () => {
   return (
@@ -46,7 +37,7 @@ const FeatureEmailPreview = () => {
         <div className="space-y-4 p-6 md:p-8">
           <div className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground">To:</span>
-            <span className="text-foreground">[founder email]</span>
+            <span className="text-foreground">[hiring email]</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground">Subject:</span>

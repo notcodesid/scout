@@ -2,14 +2,14 @@ import { ArrowRight } from "lucide-react";
 
 const FeatureGrid = () => {
     const features = [{
-        title: "Startups",
-        description: "Access our curated database of Y Combinator companies actively hiring engineers."
+        title: "Jobs",
+        description: "Aggregate live engineering roles from multiple sources into one shortlist."
     }, {
-        title: "Personalized",
-        description: "Each email is tailored to the company's mission, tech stack, and your unique background."
+        title: "Fit",
+        description: "Review extracted profile data before matching so the ranking stays grounded and editable."
     }, {
-        title: "Fast outreach",
-        description: "Generate personalized cold emails in seconds instead of spending hours researching and drafting."
+        title: "Drafts",
+        description: "Generate concise outreach drafts you can copy, tweak, and send manually."
     }];
 
     return (
