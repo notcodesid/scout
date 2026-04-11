@@ -1,7 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { CandidateProfile, coerceCandidateProfile } from "../_shared/mvp1.ts";
+import {
+  CandidateProfile,
+  ProfileSourceEvidence,
+  SourceExtractionEvidence,
+  coerceCandidateProfile,
+  uniqueStrings,
+} from "../_shared/mvp1.ts";
 import { generateJsonFromGemini } from "../_shared/gemini.ts";
+import { recordMvp1Event } from "../_shared/mvp1-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -312,28 +319,64 @@ function inferProfileFromWebsiteText(text: string, portfolioUrl: string, externa
   });
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+function preferString(primary?: string, fallback?: string) {
+  return primary?.trim() || fallback?.trim() || "";
+}
+
+function preferNumber(primary?: number, fallback?: number) {
+  if (Number.isFinite(primary) && Number(primary) > 0) {
+    return Number(primary);
   }
 
-  try {
-    const { resumePath, fileName, portfolioUrl } = await req.json();
-    const isPortfolioSource = typeof portfolioUrl === "string" && portfolioUrl.trim().length > 0;
+  if (Number.isFinite(fallback) && Number(fallback) > 0) {
+    return Number(fallback);
+  }
 
-    let prompt = "";
-    let extractedText = "";
-    let parsed: Partial<CandidateProfile> | null = null;
+  return 0;
+}
 
-    if (isPortfolioSource) {
-      const normalizedPortfolioUrl = new URL(portfolioUrl).toString();
-      const websiteContent = await fetchPortfolioContent(normalizedPortfolioUrl);
+function mergeCandidateProfiles(resumeProfile?: CandidateProfile | null, portfolioProfile?: CandidateProfile | null): CandidateProfile {
+  if (!resumeProfile && !portfolioProfile) {
+    return coerceCandidateProfile({});
+  }
 
-      if (!websiteContent.combinedText || websiteContent.combinedText.length < 120) {
-        throw new Error("Could not extract enough public content from the portfolio URL");
-      }
+  const resume = resumeProfile || coerceCandidateProfile({});
+  const portfolio = portfolioProfile || coerceCandidateProfile({});
 
-      prompt = `Extract a candidate profile from this portfolio website content and return strict JSON only.
+  return coerceCandidateProfile({
+    fullName: preferString(resume.fullName, portfolio.fullName),
+    email: preferString(resume.email, portfolio.email),
+    phone: preferString(resume.phone, portfolio.phone),
+    linkedinUrl: preferString(resume.linkedinUrl, portfolio.linkedinUrl),
+    githubUrl: preferString(resume.githubUrl, portfolio.githubUrl),
+    portfolioUrl: preferString(portfolio.portfolioUrl, resume.portfolioUrl),
+    skills: uniqueStrings([...resume.skills, ...portfolio.skills]),
+    experienceYears: preferNumber(resume.experienceYears, portfolio.experienceYears),
+    education: preferString(resume.education, portfolio.education),
+    preferredRoles:
+      uniqueStrings([
+        ...resume.preferredRoles,
+        ...portfolio.preferredRoles,
+      ]),
+    summary: preferString(resume.summary, portfolio.summary),
+  });
+}
+
+interface ExtractedSourceResult {
+  profile: CandidateProfile;
+  extractedText: string;
+  evidence: SourceExtractionEvidence;
+}
+
+async function extractPortfolioProfile(portfolioUrl: string): Promise<ExtractedSourceResult> {
+  const normalizedPortfolioUrl = new URL(portfolioUrl).toString();
+  const websiteContent = await fetchPortfolioContent(normalizedPortfolioUrl);
+
+  if (!websiteContent.combinedText || websiteContent.combinedText.length < 120) {
+    throw new Error("Could not extract enough public content from the portfolio URL");
+  }
+
+  const prompt = `Extract a candidate profile from this portfolio website content and return strict JSON only.
 
 Schema:
 {
@@ -368,40 +411,64 @@ ${websiteContent.externalLinks.join("\n")}
 Website content:
 ${websiteContent.combinedText}`;
 
-      extractedText = websiteContent.combinedText.slice(0, 12000);
+  let parsed: Partial<CandidateProfile> | null = null;
+  let extractionMethod = "gemini_portfolio";
+  let fallbackUsed = false;
 
-      try {
-        const content = await generateJsonFromGemini({
-          systemInstruction: "You extract structured candidate data from portfolio websites. Return valid JSON only.",
-          prompt,
-          temperature: 0.1,
-        });
-        parsed = parseJsonObject(content);
-      } catch (error) {
-        console.error("Gemini portfolio parsing failed, using heuristic fallback:", error);
-      }
+  try {
+    const content = await generateJsonFromGemini({
+      systemInstruction: "You extract structured candidate data from portfolio websites. Return valid JSON only.",
+      prompt,
+      temperature: 0.1,
+    });
+    parsed = parseJsonObject(content);
+  } catch (error) {
+    fallbackUsed = true;
+    extractionMethod = "portfolio_heuristic";
+    console.error("Gemini portfolio parsing failed, using heuristic fallback:", error);
+  }
 
-      parsed = parsed || inferProfileFromWebsiteText(websiteContent.combinedText, websiteContent.canonicalUrl, websiteContent.externalLinks);
-    } else {
-      if (!resumePath) {
-        throw new Error("portfolioUrl or resumePath is required");
-      }
+  if (!parsed) {
+    fallbackUsed = true;
+    extractionMethod = "portfolio_heuristic";
+    parsed = inferProfileFromWebsiteText(websiteContent.combinedText, websiteContent.canonicalUrl, websiteContent.externalLinks);
+  }
 
-      const supabase = createAdminClient();
-      const { data, error } = await supabase.storage.from("resumes").download(resumePath);
+  return {
+    profile: coerceCandidateProfile(parsed),
+    extractedText: websiteContent.combinedText.slice(0, 12000),
+    evidence: {
+      source: "portfolio",
+      used: true,
+      extractionMethod,
+      fallbackUsed,
+      metadata: {
+        canonicalUrl: websiteContent.canonicalUrl,
+        externalLinks: websiteContent.externalLinks.length,
+      },
+    },
+  };
+}
 
-      if (error || !data) {
-        throw new Error("Failed to download resume");
-      }
+async function extractResumeProfile(
+  resumePath: string,
+  fileName?: string,
+): Promise<ExtractedSourceResult> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.storage.from("resumes").download(resumePath);
 
-      const pdfBuffer = new Uint8Array(await data.arrayBuffer());
-      extractedText = extractPdfText(pdfBuffer).slice(0, 12000);
+  if (error || !data) {
+    throw new Error("Failed to download resume");
+  }
 
-      if (!extractedText || extractedText.length < 80) {
-        throw new Error("Could not extract enough text from the resume");
-      }
+  const pdfBuffer = new Uint8Array(await data.arrayBuffer());
+  const extractedText = extractPdfText(pdfBuffer).slice(0, 12000);
 
-      prompt = `Extract a candidate profile from this resume and return strict JSON only.
+  if (!extractedText || extractedText.length < 80) {
+    throw new Error("Could not extract enough text from the resume");
+  }
+
+  const prompt = `Extract a candidate profile from this resume and return strict JSON only.
 
 Schema:
 {
@@ -428,51 +495,199 @@ Rules:
 
 If the PDF is visually structured, use the actual document content rather than guessing from partial text extraction.`;
 
-      try {
-        const content = await generateJsonFromGemini({
-          systemInstruction: "You extract structured candidate data from resumes. Return valid JSON only.",
-          prompt,
-          parts: [
-            {
-              inline_data: {
-                mime_type: "application/pdf",
-                data: toBase64(pdfBuffer),
-              },
-            },
-          ],
-          temperature: 0.1,
-        });
-        parsed = parseJsonObject(content);
-      } catch (error) {
-        console.error("Gemini PDF parsing failed, falling back to extracted text:", error);
-      }
+  let parsed: Partial<CandidateProfile> | null = null;
+  let extractionMethod = "gemini_resume_pdf";
+  let fallbackUsed = false;
 
-      if (!parsed) {
-        const textPrompt = `${prompt}
+  try {
+    const content = await generateJsonFromGemini({
+      systemInstruction: "You extract structured candidate data from resumes. Return valid JSON only.",
+      prompt,
+      parts: [
+        {
+          inline_data: {
+            mime_type: "application/pdf",
+            data: toBase64(pdfBuffer),
+          },
+        },
+      ],
+      temperature: 0.1,
+    });
+    parsed = parseJsonObject(content);
+  } catch (error) {
+    fallbackUsed = true;
+    extractionMethod = "gemini_resume_text";
+    console.error("Gemini PDF parsing failed, falling back to extracted text:", error);
+  }
+
+  if (!parsed) {
+    const textPrompt = `${prompt}
 
 Resume text:
 ${extractedText}`;
 
-        try {
-          const content = await generateJsonFromGemini({
-            systemInstruction: "You extract structured candidate data from resumes. Return valid JSON only.",
-            prompt: textPrompt,
-            temperature: 0.1,
-          });
-          parsed = parseJsonObject(content);
-        } catch (error) {
-          console.error("Gemini text parsing failed, using regex fallback:", error);
-        }
+    try {
+      const content = await generateJsonFromGemini({
+        systemInstruction: "You extract structured candidate data from resumes. Return valid JSON only.",
+        prompt: textPrompt,
+        temperature: 0.1,
+      });
+      parsed = parseJsonObject(content);
+    } catch (error) {
+      fallbackUsed = true;
+      extractionMethod = "resume_regex_fallback";
+      console.error("Gemini text parsing failed, using regex fallback:", error);
+    }
+  }
+
+  if (!parsed) {
+    fallbackUsed = true;
+    extractionMethod = "resume_regex_fallback";
+    parsed = inferProfileFromText(extractedText, fileName);
+  }
+
+  return {
+    profile: coerceCandidateProfile(parsed),
+    extractedText,
+    evidence: {
+      source: "resume",
+      used: true,
+      extractionMethod,
+      fallbackUsed,
+      metadata: {
+        resumePath,
+        fileName: fileName || "",
+      },
+    },
+  };
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { resumePath, fileName, portfolioUrl, submissionId } = await req.json();
+    const normalizedPortfolioUrl =
+      typeof portfolioUrl === "string" && portfolioUrl.trim().length > 0 ? new URL(portfolioUrl).toString() : null;
+    const hasResumeSource = typeof resumePath === "string" && resumePath.trim().length > 0;
+    const hasPortfolioSource = Boolean(normalizedPortfolioUrl);
+
+    if (!hasResumeSource && !hasPortfolioSource) {
+      throw new Error("portfolioUrl or resumePath is required");
+    }
+
+    const warnings: string[] = [];
+    const sourceResults: ExtractedSourceResult[] = [];
+    const sourceErrors: Array<{ source: "resume" | "portfolio"; error: string }> = [];
+
+    if (hasResumeSource) {
+      try {
+        sourceResults.push(await extractResumeProfile(String(resumePath), typeof fileName === "string" ? fileName : undefined));
+      } catch (error) {
+        console.error("Resume extraction failed:", error);
+        sourceErrors.push({
+          source: "resume",
+          error: error instanceof Error ? error.message : "Resume extraction failed",
+        });
+      }
+    }
+
+    if (hasPortfolioSource && normalizedPortfolioUrl) {
+      try {
+        sourceResults.push(await extractPortfolioProfile(normalizedPortfolioUrl));
+      } catch (error) {
+        console.error("Portfolio extraction failed:", error);
+        sourceErrors.push({
+          source: "portfolio",
+          error: error instanceof Error ? error.message : "Portfolio extraction failed",
+        });
+      }
+    }
+
+    if (sourceResults.length === 0) {
+      const failureMessage = sourceErrors.map((entry) => `${entry.source}: ${entry.error}`).join(" | ") || "Failed to extract candidate profile";
+
+      try {
+        await recordMvp1Event(createAdminClient(), {
+          submissionId: typeof submissionId === "string" ? submissionId : null,
+          eventType: "profile_extract",
+          status: "failure",
+          fallbackUsed: false,
+          metadata: {
+            resumeProvided: hasResumeSource,
+            portfolioProvided: hasPortfolioSource,
+            errors: sourceErrors,
+          },
+        });
+      } catch (eventError) {
+        console.error("Failed to record extraction failure event:", eventError);
       }
 
-      parsed = parsed || inferProfileFromText(extractedText, fileName);
+      throw new Error(failureMessage);
     }
-    const profile = coerceCandidateProfile(parsed);
+
+    if (sourceErrors.length > 0) {
+      warnings.push(
+        ...sourceErrors.map((entry) =>
+          entry.source === "resume"
+            ? `Resume data could not be fully used: ${entry.error}.`
+            : `Portfolio data could not be fully used: ${entry.error}.`,
+        ),
+      );
+    }
+
+    const resumeResult = sourceResults.find((entry) => entry.evidence.source === "resume");
+    const portfolioResult = sourceResults.find((entry) => entry.evidence.source === "portfolio");
+    const profile = mergeCandidateProfiles(resumeResult?.profile, portfolioResult?.profile);
+    const sourceEvidence: ProfileSourceEvidence = {
+      usedSources: sourceResults.map((entry) => entry.evidence.source),
+      sources: [
+        ...sourceResults.map((entry) => entry.evidence),
+        ...sourceErrors.map(
+          (entry): SourceExtractionEvidence => ({
+            source: entry.source,
+            used: false,
+            extractionMethod: "failed",
+            fallbackUsed: false,
+            error: entry.error,
+          }),
+        ),
+      ],
+      warnings,
+      fallbackUsed: sourceResults.some((entry) => entry.evidence.fallbackUsed) || sourceErrors.length > 0,
+    };
+    const extractedText = sourceResults
+      .map((entry) => `source: ${entry.evidence.source}\n${entry.extractedText}`)
+      .join("\n\n---\n\n")
+      .slice(0, 12000);
+
+    try {
+      await recordMvp1Event(createAdminClient(), {
+        submissionId: typeof submissionId === "string" ? submissionId : null,
+        eventType: "profile_extract",
+        status: "success",
+        fallbackUsed: sourceEvidence.fallbackUsed,
+        metadata: {
+          usedSources: sourceEvidence.usedSources,
+          warnings,
+          extractionMethods: sourceResults.map((entry) => ({
+            source: entry.evidence.source,
+            method: entry.evidence.extractionMethod,
+            fallbackUsed: entry.evidence.fallbackUsed,
+          })),
+        },
+      });
+    } catch (eventError) {
+      console.error("Failed to record extraction success event:", eventError);
+    }
 
     return new Response(
       JSON.stringify({
         profile,
         extractedTextPreview: extractedText.slice(0, 1200),
+        sourceEvidence,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -4,10 +4,10 @@ import {
   MatchJobResult,
   candidateKeywordPool,
   coerceCandidateProfile,
-  keywordOverlap,
   normalizeScore,
   tokenize,
 } from "../_shared/mvp1.ts";
+import { recordMvp1Event } from "../_shared/mvp1-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,6 +17,7 @@ const corsHeaders = {
 interface UnifiedJob {
   id: string;
   source_slug: string;
+  source_label?: string;
   title: string;
   company_name: string;
   company_slug: string;
@@ -65,9 +66,27 @@ function experienceScore(profile: CandidateProfile, job: UnifiedJob) {
   return years >= 2 ? 14 : 10;
 }
 
+function matchingSkills(profile: CandidateProfile, jobTokens: Set<string>) {
+  return profile.skills.filter((skill) => tokenize(skill).some((token) => jobTokens.has(token)));
+}
+
+function matchingRoleLabels(profile: CandidateProfile, jobTokens: Set<string>) {
+  return profile.preferredRoles.filter((role) => tokenize(role).some((token) => jobTokens.has(token)));
+}
+
+function matchingContextKeywords(profile: CandidateProfile, jobTokens: Set<string>) {
+  return Array.from(
+    new Set(
+      [...tokenize(profile.summary), ...tokenize(profile.education)].filter((token) => jobTokens.has(token)),
+    ),
+  ).slice(0, 3);
+}
+
+function overlapScore(values: string[]) {
+  return values.reduce((score, value) => score + Math.max(1, tokenize(value).length), 0);
+}
+
 function scoreJob(job: UnifiedJob, profile: CandidateProfile): MatchJobResult {
-  const roleNeedles = profile.preferredRoles.flatMap((role) => tokenize(role));
-  const keywordPool = candidateKeywordPool(profile);
   const allText = [
     job.title,
     job.company_name,
@@ -79,34 +98,45 @@ function scoreJob(job: UnifiedJob, profile: CandidateProfile): MatchJobResult {
     job.remote,
   ].join(" ");
   const jobTokens = new Set(tokenize(allText));
+  const matchedRoles = matchingRoleLabels(profile, jobTokens);
+  const matchedSkills = matchingSkills(profile, jobTokens);
+  const matchedContextKeywords = matchingContextKeywords(profile, jobTokens);
+  const keywordPool = candidateKeywordPool(profile);
+  const keywordScore = keywordPool.filter((keyword) => jobTokens.has(keyword.toLowerCase())).length;
 
-  const roleOverlap = keywordOverlap(jobTokens, roleNeedles);
-  const keywordScore = keywordOverlap(jobTokens, keywordPool);
-  const skillTokens = profile.skills.flatMap((s) => tokenize(s));
-  const skillOverlap = keywordOverlap(jobTokens, skillTokens);
-
-  let rawScore = 20;
-  rawScore += roleOverlap * 18;
-  rawScore += Math.min(keywordScore * 5, 25);
-  rawScore += Math.min(skillOverlap * 10, 20);
+  let rawScore = 18;
+  rawScore += Math.min(overlapScore(matchedRoles) * 8, 24);
+  rawScore += Math.min(overlapScore(matchedSkills) * 6, 24);
+  rawScore += Math.min(keywordScore * 3, 18);
+  rawScore += Math.min(matchedContextKeywords.length * 4, 12);
   rawScore += experienceScore(profile, job);
 
   if (job.remote === "Remote") {
-    rawScore += 5;
+    rawScore += 4;
+  } else if (job.remote === "Hybrid") {
+    rawScore += 2;
   }
 
   const fitReasons: string[] = [];
-  if (roleOverlap > 0) {
-    fitReasons.push(`Role alignment with ${profile.preferredRoles[0] || "your target track"}.`);
+  if (matchedRoles.length > 0) {
+    fitReasons.push(`Role overlap: ${matchedRoles.slice(0, 2).join(", ")}.`);
   }
-  if (skillOverlap > 0 && profile.skills.length > 0) {
-    fitReasons.push(`Skill overlap around ${profile.skills.slice(0, 3).join(", ")}.`);
+  if (matchedSkills.length > 0) {
+    fitReasons.push(`Skill overlap: ${matchedSkills.slice(0, 3).join(", ")}.`);
   }
-  if (job.company_one_liner) {
-    fitReasons.push("Company focus matches your profile keywords and stated interests.");
+  if (matchedContextKeywords.length > 0) {
+    fitReasons.push(`Profile keywords echoed in the role: ${matchedContextKeywords.join(", ")}.`);
+  }
+  if (profile.experienceYears > 0) {
+    fitReasons.push(`Seniority fit for ${profile.experienceYears}+ years of experience.`);
   }
   if (job.remote === "Remote") {
-    fitReasons.push("Remote-friendly role — a strong signal for distributed teams.");
+    fitReasons.push("Remote-friendly role.");
+  } else if (job.remote === "Hybrid") {
+    fitReasons.push("Hybrid role with partial remote flexibility.");
+  }
+  if (fitReasons.length < 2 && job.company_one_liner) {
+    fitReasons.push(`Company focus: ${job.company_one_liner.slice(0, 110)}${job.company_one_liner.length > 110 ? "..." : ""}`);
   }
   if (fitReasons.length === 0) {
     fitReasons.push("Relevant fit based on role title, company focus, and experience level.");
@@ -126,7 +156,7 @@ function scoreJob(job: UnifiedJob, profile: CandidateProfile): MatchJobResult {
     jobUrl: job.job_url,
     applyUrl: job.apply_url,
     matchScore: normalizeScore(rawScore),
-    fitReasons: fitReasons.slice(0, 3),
+    fitReasons: fitReasons.slice(0, 4),
   };
 }
 
@@ -136,17 +166,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { candidateProfile, limit = 12, sources, remoteOnly } = await req.json();
+    const { candidateProfile, limit = 12, sources, remoteOnly, submissionId } = await req.json();
     const profile = coerceCandidateProfile(candidateProfile || {});
 
     const supabase = createAdminClient();
 
     let query = supabase
-      .from("job_listings")
+      .from("canonical_job_listings")
       .select(
-        "id, source_slug, title, company_name, company_slug, company_one_liner, company_logo_url, company_website_url, job_type, location, salary_min, salary_max, salary_currency, remote, skills, description, apply_url, job_url, seniority, category",
+        "id, source_slug, source_label, title, company_name, company_slug, company_one_liner, company_logo_url, company_website_url, job_type, location, salary_min, salary_max, salary_currency, remote, skills, description, apply_url, job_url, seniority, category",
       )
-      .limit(300);
+      .order("last_seen_at", { ascending: false })
+      .limit(500);
 
     if (sources && Array.isArray(sources) && sources.length > 0) {
       query = query.in("source_slug", sources);
@@ -167,14 +198,27 @@ Deno.serve(async (req) => {
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, Math.max(1, Math.min(limit, 20)));
 
-    const sourceCounts = ranked.reduce(
+    const sourceCounts = ((data || []) as UnifiedJob[]).reduce(
       (acc, job) => {
-        const src = job.jobUrl?.split("/")[2]?.replace("www.", "").split(".")[0] || "other";
+        const src = job.source_slug || "other";
         acc[src] = (acc[src] || 0) + 1;
         return acc;
       },
       {} as Record<string, number>,
     );
+
+    await recordMvp1Event(supabase, {
+      submissionId: typeof submissionId === "string" ? submissionId : null,
+      eventType: "job_match",
+      status: "success",
+      metadata: {
+        totalScored: jobs.length,
+        returnedCount: ranked.length,
+        sourceBreakdown: sourceCounts,
+        remoteOnly: Boolean(remoteOnly),
+        sources: Array.isArray(sources) ? sources : [],
+      },
+    });
 
     return new Response(
       JSON.stringify({
@@ -186,6 +230,17 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error("Error in match-jobs:", error);
+    try {
+      await recordMvp1Event(createAdminClient(), {
+        eventType: "job_match",
+        status: "failure",
+        metadata: {
+          error: error instanceof Error ? error.message : "Failed to match jobs",
+        },
+      });
+    } catch (eventError) {
+      console.error("Failed to record job-match failure event:", eventError);
+    }
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Failed to match jobs",

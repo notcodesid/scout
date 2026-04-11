@@ -14,6 +14,22 @@ export interface CandidateProfile {
   summary: string;
 }
 
+export interface SourceExtractionEvidence {
+  source: "resume" | "portfolio";
+  used: boolean;
+  extractionMethod: string;
+  fallbackUsed: boolean;
+  error?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ProfileSourceEvidence {
+  usedSources: Array<"resume" | "portfolio">;
+  sources: SourceExtractionEvidence[];
+  warnings: string[];
+  fallbackUsed: boolean;
+}
+
 export interface JobMatch {
   targetType: "job";
   jobId: string;
@@ -46,8 +62,11 @@ export interface GeneratedEmail {
 export interface ApplyFlowDraft {
   step: number;
   submissionId: string | null;
-  sourceUrl: string | null;
-  sourceLabel: string | null;
+  portfolioUrl: string | null;
+  portfolioLabel: string | null;
+  resumePath: string | null;
+  resumeName: string | null;
+  sourceEvidence: ProfileSourceEvidence | null;
   profile: CandidateProfile | null;
   selectedJobIds: string[];
   jobMatches: JobMatch[];

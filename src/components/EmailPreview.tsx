@@ -41,6 +41,8 @@ const EmailPreview = ({ emails }: EmailPreviewProps) => {
 
       {emails.map((email) => {
         const fullEmail = `Subject: ${email.subject}\n\n${email.body}`;
+        const jobTitle =
+          typeof email.targetMetadata?.jobTitle === "string" ? email.targetMetadata.jobTitle : null;
 
         return (
           <article key={`${email.targetType}-${email.targetId}`} className="glass-card overflow-hidden">
@@ -50,6 +52,7 @@ const EmailPreview = ({ emails }: EmailPreviewProps) => {
                   <Mail className="h-4 w-4 text-primary" />
                   <p className="font-medium text-foreground">{email.companyName}</p>
                   <Badge variant="secondary">Job</Badge>
+                  {jobTitle && <Badge variant="outline">{jobTitle}</Badge>}
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">{email.fitSummary}</p>
               </div>

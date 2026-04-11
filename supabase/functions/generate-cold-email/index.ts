@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { CandidateProfile, GeneratedEmailOutput, coerceCandidateProfile } from "../_shared/mvp1.ts";
 import { generateJsonFromGemini } from "../_shared/gemini.ts";
+import { recordMvp1Event } from "../_shared/mvp1-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,6 +72,19 @@ function parseAiJson<T>(content: string): T | null {
     }
     return null;
   }
+}
+
+function normalizeSubjectOptions(candidate: string[] | undefined, fallback: string[]) {
+  const merged = Array.from(
+    new Set(
+      (Array.isArray(candidate) ? candidate : [])
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .concat(fallback),
+    ),
+  );
+
+  return merged.slice(0, 3);
 }
 
 function fallbackEmail(profile: CandidateProfile, target: SelectedJob): Omit<GeneratedEmailOutput, "id"> {
@@ -154,9 +168,11 @@ serve(async (req) => {
     }
 
     const generated: GeneratedEmailOutput[] = [];
+    let fallbackCount = 0;
 
     for (const target of targets) {
       let packageOutput = fallbackEmail(profile, target);
+      let usedFallback = true;
 
       const prompt = `Generate a structured cold outreach package for a candidate.
 
@@ -184,31 +200,37 @@ ${JSON.stringify(target, null, 2)}`;
 
       try {
         const content = await generateJsonFromGemini({
-          systemInstruction: "You write concise, specific cold emails for startup job outreach and must return strict JSON only.",
+          systemInstruction: "You write concise, specific job-outreach emails and must return strict JSON only.",
           prompt,
           temperature: 0.35,
         });
         const parsed = parseAiJson<{ fitSummary?: string; subjectOptions?: string[]; subject?: string; body?: string }>(content);
 
         if (parsed?.body && parsed?.subject) {
+          const normalizedSubjectOptions = normalizeSubjectOptions(parsed.subjectOptions, packageOutput.subjectOptions);
           packageOutput = {
             ...packageOutput,
             fitSummary: (parsed.fitSummary || packageOutput.fitSummary).trim(),
-            subjectOptions: (parsed.subjectOptions || packageOutput.subjectOptions).slice(0, 3),
-            subject: parsed.subject.trim(),
+            subjectOptions: normalizedSubjectOptions,
+            subject: parsed.subject.trim() || normalizedSubjectOptions[0],
             body: parsed.body.trim(),
           };
+          usedFallback = false;
         }
       } catch (error) {
         console.error("Gemini email generation failed, using fallback:", error);
+      }
+
+      if (usedFallback) {
+        fallbackCount += 1;
       }
 
       const { data: savedEmail, error } = await supabase
         .from("generated_emails")
         .insert({
           submission_id: submissionId || null,
-          startup_id: packageOutput.targetId,
-          startup_name: packageOutput.companyName,
+          target_id: packageOutput.targetId,
+          company_name: packageOutput.companyName,
           subject: packageOutput.subject,
           body: packageOutput.body,
           status: "generated",
@@ -232,11 +254,34 @@ ${JSON.stringify(target, null, 2)}`;
       });
     }
 
+    await recordMvp1Event(supabase, {
+      submissionId: typeof submissionId === "string" ? submissionId : null,
+      eventType: "email_generate",
+      status: "success",
+      fallbackUsed: fallbackCount > 0,
+      metadata: {
+        selectedCount: targets.length,
+        generatedCount: generated.length,
+        fallbackCount,
+      },
+    });
+
     return new Response(JSON.stringify({ emails: generated }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Error in generate-cold-email:", error);
+    try {
+      await recordMvp1Event(createAdminClient(), {
+        eventType: "email_generate",
+        status: "failure",
+        metadata: {
+          error: error instanceof Error ? error.message : "Failed to generate cold emails",
+        },
+      });
+    } catch (eventError) {
+      console.error("Failed to record email generation failure event:", eventError);
+    }
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Failed to generate cold emails",

@@ -16,6 +16,7 @@ const pool = new Pool({
 interface JobRow {
   id: string;
   source_slug: string;
+  source_label: string;
   title: string;
   company_name: string;
   company_slug: string;
@@ -38,6 +39,42 @@ interface JobRow {
   synced_at: string;
 }
 
+function buildJobFilters(options: {
+  source?: string;
+  sourcesParam?: string;
+  remote?: string;
+  search?: string;
+}) {
+  const params: Array<string | number | string[]> = [];
+  const where: string[] = [];
+
+  if (options.source) {
+    params.push(options.source);
+    where.push(`source_slug = $${params.length}`);
+  } else if (options.sourcesParam) {
+    const sources = options.sourcesParam.split(",").map((value) => value.trim()).filter(Boolean);
+    if (sources.length > 0) {
+      params.push(sources);
+      where.push(`source_slug = ANY($${params.length})`);
+    }
+  }
+
+  if (options.remote && options.remote !== "all") {
+    params.push(options.remote);
+    where.push(`remote = $${params.length}`);
+  }
+
+  if (options.search) {
+    params.push(`%${options.search}%`);
+    where.push(`(title ILIKE $${params.length} OR company_name ILIKE $${params.length} OR description ILIKE $${params.length})`);
+  }
+
+  return {
+    whereClause: where.length > 0 ? `WHERE ${where.join(" AND ")}` : "",
+    params,
+  };
+}
+
 app.get("/api/jobs", async (req, res) => {
   try {
     const offset = Math.max(0, parseInt(req.query.offset as string) || 0);
@@ -47,56 +84,73 @@ app.get("/api/jobs", async (req, res) => {
     const remote = req.query.remote as string;
     const search = req.query.search as string;
 
-    let query = `
-      SELECT * FROM jobs 
-      WHERE 1=1
+    const filters = buildJobFilters({ source, sourcesParam, remote, search });
+    const jobsQuery = `
+      SELECT
+        id,
+        source_slug,
+        source_label,
+        title,
+        company_name,
+        company_slug,
+        company_one_liner,
+        company_logo_url,
+        company_website_url,
+        job_type,
+        location,
+        salary_min,
+        salary_max,
+        salary_currency,
+        remote,
+        skills,
+        description,
+        apply_url,
+        job_url,
+        seniority,
+        category,
+        last_seen_at,
+        synced_at
+      FROM canonical_job_listings
+      ${filters.whereClause}
+      ORDER BY last_seen_at DESC
+      LIMIT $${filters.params.length + 1}
+      OFFSET $${filters.params.length + 2}
     `;
-    const params: Array<string | number | string[]> = [];
-    let paramIndex = 1;
+    const jobsParams = [...filters.params, limit, offset];
+    const countQuery = `
+      SELECT count(*)::integer AS total
+      FROM canonical_job_listings
+      ${filters.whereClause}
+    `;
 
-    if (source) {
-      query += ` AND source_slug = $${paramIndex++}`;
-      params.push(source);
-    } else if (sourcesParam) {
-      const sources = sourcesParam.split(",").map((s) => s.trim());
-      query += ` AND source_slug = ANY($${paramIndex++})`;
-      params.push(sources);
-    }
-
-    if (remote && remote !== "all") {
-      query += ` AND remote = $${paramIndex++}`;
-      params.push(remote);
-    }
-
-    if (search) {
-      query += ` AND (title ILIKE $${paramIndex} OR company_name ILIKE $${paramIndex})`;
-      params.push(`%${search}%`);
-      paramIndex++;
-    }
-
-    query += ` ORDER BY last_seen_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
-    params.push(limit, offset);
-
-    const jobsResult = await pool.query(query, params);
+    const [jobsResult, countResult, sourcesResult, syncResult, canonicalSourceCounts] = await Promise.all([
+      pool.query(jobsQuery, jobsParams),
+      pool.query(countQuery, filters.params),
+      pool.query(`
+        SELECT slug, label, base_url, description, is_active, sort_order
+        FROM job_sources
+        ORDER BY sort_order
+      `),
+      pool.query(`
+        SELECT source_slug, status, last_success_at, last_completed_at, last_error, total_active_jobs
+        FROM job_sync_states
+      `),
+      pool.query(`
+        SELECT source_slug, count(*)::integer AS total_active_jobs
+        FROM canonical_job_listings
+        GROUP BY source_slug
+      `),
+    ]);
     const jobs = jobsResult.rows;
-
-    const sourcesResult = await pool.query(`
-      SELECT slug, label, base_url, description, is_active, sort_order 
-      FROM job_sources 
-      ORDER BY sort_order
-    `);
-
-    const syncResult = await pool.query(`
-      SELECT source_slug, status, last_success_at, last_completed_at, last_error, total_active_jobs 
-      FROM job_sync_states
-    `);
+    const total = countResult.rows[0]?.total || 0;
 
     const syncMap = new Map(syncResult.rows.map((s) => [s.source_slug, s]));
+    const canonicalCountMap = new Map(canonicalSourceCounts.rows.map((row) => [row.source_slug, row.total_active_jobs]));
 
     const formattedJobs = jobs.map((job: JobRow) => ({
       id: job.id,
       source: job.source_slug,
-      sourceLabel: job.source_slug,
+      sourceLabel: job.source_label || job.source_slug,
       title: job.title,
       companyName: job.company_name,
       companySlug: job.company_slug,
@@ -129,16 +183,16 @@ app.get("/api/jobs", async (req, res) => {
     res.json({
       success: true,
       jobs: formattedJobs,
-      total: jobs.length,
+      total,
       offset,
       limit,
-      hasMore: jobs.length === limit,
+      hasMore: offset + jobs.length < total,
       source: source || sourcesParam || "all",
       sources: sourcesResult.rows.map((s) => ({
         ...s,
         syncStatus: syncMap.get(s.slug)?.status || "unknown",
         lastSyncedAt: syncMap.get(s.slug)?.last_success_at || null,
-        totalActiveJobs: syncMap.get(s.slug)?.total_active_jobs || 0,
+        totalActiveJobs: canonicalCountMap.get(s.slug) || 0,
         lastError: syncMap.get(s.slug)?.last_error || null,
       })),
       lastSyncedAt: lastSyncedAt > 0 ? new Date(lastSyncedAt).toISOString() : null,

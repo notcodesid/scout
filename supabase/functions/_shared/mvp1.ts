@@ -12,6 +12,22 @@ export interface CandidateProfile {
   summary: string;
 }
 
+export interface SourceExtractionEvidence {
+  source: "resume" | "portfolio";
+  used: boolean;
+  extractionMethod: string;
+  fallbackUsed: boolean;
+  error?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ProfileSourceEvidence {
+  usedSources: Array<"resume" | "portfolio">;
+  sources: SourceExtractionEvidence[];
+  warnings: string[];
+  fallbackUsed: boolean;
+}
+
 export interface MatchJobResult {
   targetType: "job";
   jobId: string;

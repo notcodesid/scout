@@ -113,6 +113,7 @@ export type Database = {
       generated_emails: {
         Row: {
           body: string
+          company_name: string
           created_at: string
           fit_summary: string | null
           id: string
@@ -124,29 +125,33 @@ export type Database = {
           subject_options: string[] | null
           subject: string
           submission_id: string | null
+          target_id: string
           target_metadata: Json | null
           target_type: string | null
           user_id: string | null
         }
         Insert: {
           body: string
+          company_name: string
           created_at?: string
           fit_summary?: string | null
           id?: string
           response_status?: string | null
           sent_at?: string | null
-          startup_id: string
-          startup_name: string
+          startup_id?: string
+          startup_name?: string
           status?: string | null
           subject_options?: string[] | null
           subject: string
           submission_id?: string | null
+          target_id: string
           target_metadata?: Json | null
           target_type?: string | null
           user_id?: string | null
         }
         Update: {
           body?: string
+          company_name?: string
           created_at?: string
           fit_summary?: string | null
           id?: string
@@ -158,6 +163,7 @@ export type Database = {
           subject_options?: string[] | null
           subject?: string
           submission_id?: string | null
+          target_id?: string
           target_metadata?: Json | null
           target_type?: string | null
           user_id?: string | null
@@ -165,6 +171,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "generated_emails_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "engineer_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mvp1_flow_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          fallback_used: boolean
+          id: string
+          metadata: Json
+          status: string
+          submission_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          fallback_used?: boolean
+          id?: string
+          metadata?: Json
+          status: string
+          submission_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          fallback_used?: boolean
+          id?: string
+          metadata?: Json
+          status?: string
+          submission_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mvp1_flow_events_submission_id_fkey"
             columns: ["submission_id"]
             isOneToOne: false
             referencedRelation: "engineer_submissions"
