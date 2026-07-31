@@ -3,9 +3,9 @@ import { ArrowRight } from "lucide-react";
 const steps = [
   {
     number: "01",
-    title: "Browse YC Roles",
+    title: "Browse Startup Roles",
     description:
-      "Start with live roles from YC startups, grouped so you can scan openings without bouncing across dozens of company sites.",
+      "Start with live roles from startup career pages and curated YC listings, grouped so you can scan openings without bouncing across dozens of company sites.",
   },
   {
     number: "02",
@@ -68,7 +68,7 @@ const HowItWorksSection = () => {
             </span>
           </h2>
           <p className="mt-5 text-lg text-muted-foreground">
-            Scout is focused on one thing right now: helping you discover strong YC startup opportunities fast.
+            Scout is focused on one thing right now: helping you discover strong startup opportunities fast.
           </p>
         </div>
 

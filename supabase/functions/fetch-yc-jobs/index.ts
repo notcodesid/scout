@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
 
     let effectiveListings = listings || [];
     let effectiveCount = count ?? 0;
-    let lastSyncedAt = state?.last_success_at ?? null;
+    const lastSyncedAt = state?.last_success_at ?? null;
     let hasMore =
       effectiveListings.length === limit || offset + effectiveListings.length < effectiveCount;
 

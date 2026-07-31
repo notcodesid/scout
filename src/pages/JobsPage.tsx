@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Briefcase, Loader2 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -6,34 +6,20 @@ import JobCard from "@/components/JobCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  DEFAULT_YC_JOB_CATEGORY,
+  DEFAULT_JOB_CATEGORY,
   flattenJobs,
-  useInfiniteYCJobs,
-  useYCJobsSync,
-  type YCJobRoleLink,
-} from "@/hooks/use-yc-jobs";
-
-const FALLBACK_ROLE_LINKS: YCJobRoleLink[] = [
-  { label: "Engineering", path: "/jobs", slug: "software-engineer" },
-  { label: "Design", path: "/jobs/l/designer", slug: "designer" },
-  { label: "Recruiting", path: "/jobs/l/recruiting", slug: "recruiting" },
-  { label: "Science", path: "/jobs/l/science", slug: "science" },
-  { label: "Product", path: "/jobs/l/product-manager", slug: "product-manager" },
-  { label: "Operations", path: "/jobs/l/operations", slug: "operations" },
-  { label: "Sales", path: "/jobs/l/sales-manager", slug: "sales-manager" },
-  { label: "Marketing", path: "/jobs/l/marketing", slug: "marketing" },
-  { label: "Legal", path: "/jobs/l/legal", slug: "legal" },
-  { label: "Finance", path: "/jobs/l/finance", slug: "finance" },
-];
+  useInfiniteJobs,
+  useJobsSync,
+} from "@/hooks/use-jobs";
 
 function formatSyncTimestamp(value: string | null) {
   if (!value) {
-    return "Fresh YC roles, updated regularly";
+      return "Fresh startup roles, updated regularly";
   }
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    return "Fresh YC roles, updated regularly";
+    return "Fresh startup roles, updated regularly";
   }
 
   return new Intl.DateTimeFormat(undefined, {
@@ -43,7 +29,7 @@ function formatSyncTimestamp(value: string | null) {
 }
 
 const JobsPage = () => {
-  const [category, setCategory] = useState(DEFAULT_YC_JOB_CATEGORY);
+  const [category, setCategory] = useState(DEFAULT_JOB_CATEGORY);
   const {
     data,
     isLoading,
@@ -53,37 +39,39 @@ const JobsPage = () => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useInfiniteYCJobs(category);
+  } = useInfiniteJobs(category);
   const {
     mutateAsync: refreshJobs,
     isPending: isRefreshing,
     error: refreshError,
-  } = useYCJobsSync();
+  } = useJobsSync();
   const bootstrappedSyncRef = useRef(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const jobs = flattenJobs(data?.pages);
   const firstPage = data?.pages[0];
-  const roleLinks = firstPage?.roleLinks?.length ? firstPage.roleLinks : FALLBACK_ROLE_LINKS;
+  const roleLinks = firstPage?.roleLinks?.length
+    ? firstPage.roleLinks
+    : [{ label: "All", path: "/jobs", slug: DEFAULT_JOB_CATEGORY, count: firstPage?.total ?? 0 }];
   const loadedJobsCount = jobs.length;
   const syncMessage = firstPage?.lastSyncedAt
     ? `Updated ${formatSyncTimestamp(firstPage.lastSyncedAt)}`
-    : "Fresh YC roles, updated regularly.";
+    : "Fresh startup roles, updated regularly.";
   const displayError =
     error instanceof Error
       ? error.message
       : refreshError instanceof Error
         ? refreshError.message
-        : "The YC jobs cache did not load.";
+        : "The jobs cache did not load.";
 
-  async function handleRefresh(force: boolean) {
+  const handleRefresh = useCallback(async (force: boolean) => {
     try {
       await refreshJobs({ force });
       await refetch();
     } catch {
       // The mutation state already carries the error for the UI.
     }
-  }
+  }, [refreshJobs, refetch]);
 
   useEffect(() => {
     if (!firstPage?.needsSync || bootstrappedSyncRef.current) {
@@ -92,7 +80,7 @@ const JobsPage = () => {
 
     bootstrappedSyncRef.current = true;
     void handleRefresh(false);
-  }, [firstPage?.needsSync]);
+  }, [firstPage?.needsSync, handleRefresh]);
 
   useEffect(() => {
     const target = loadMoreRef.current;
@@ -130,15 +118,15 @@ const JobsPage = () => {
       <main className="container mx-auto px-4 py-10 md:py-14">
         <section className="mb-10">
           <Badge variant="accent" className="rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em]">
-            Official YC Jobs
+            Multi-source Startup Jobs
           </Badge>
           <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="max-w-3xl">
               <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">
-                Discover live roles from YC startups
+                Discover live roles from startups
               </h1>
               <p className="mt-4 text-lg text-muted-foreground">
-                Explore current openings from the official Work at a Startup board, grouped by role so you can move faster.
+                Explore roles from public ATS job boards plus a curated YC feed, grouped by role so you can move faster.
               </p>
               <p className="mt-3 text-sm text-muted-foreground">
                 {syncMessage}
@@ -194,9 +182,9 @@ const JobsPage = () => {
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-            <h2 className="mt-5 font-display text-2xl font-semibold">Syncing YC jobs</h2>
+            <h2 className="mt-5 font-display text-2xl font-semibold">Syncing startup jobs</h2>
             <p className="mt-3 text-muted-foreground">
-              Pulling the latest roles into Scout&apos;s cache for the first load.
+              Pulling the latest roles from Greenhouse, Lever, Ashby, and YC into Scout&apos;s cache.
             </p>
           </div>
         )}
@@ -204,7 +192,7 @@ const JobsPage = () => {
         {(isError || refreshError) && jobs.length === 0 && (
           <div className="rounded-3xl border border-border/70 bg-card p-10 text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
-              <Briefcase className="h-6 w-6 text-destructive" />
+                <Briefcase className="h-6 w-6 text-destructive" />
             </div>
             <h2 className="mt-5 font-display text-2xl font-semibold">Failed to load jobs</h2>
             <p className="mt-3 text-muted-foreground">
@@ -228,8 +216,10 @@ const JobsPage = () => {
             </h2>
             <p className="mt-3 text-muted-foreground">
               {firstPage?.needsSync
-                ? "Run a refresh to import the official YC jobs into the cache."
-                : "This role category currently has no jobs in the cached YC feed."}
+                ? "Import job sources, then run a refresh to populate the cache."
+                : category === DEFAULT_JOB_CATEGORY
+                  ? "No imported job sources have active roles yet."
+                  : "This category has no cached jobs. It will disappear once filters are rebuilt from active jobs."}
             </p>
             {firstPage?.needsSync && (
               <Button
@@ -244,7 +234,7 @@ const JobsPage = () => {
                     Refreshing
                   </>
                 ) : (
-                  "Import YC Jobs"
+                    "Import Jobs"
                 )}
               </Button>
             )}

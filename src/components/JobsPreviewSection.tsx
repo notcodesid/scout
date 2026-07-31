@@ -3,12 +3,12 @@ import { Briefcase, Loader2 } from "lucide-react";
 import JobCard from "@/components/JobCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DEFAULT_YC_JOB_CATEGORY, flattenJobs, useInfiniteYCJobs } from "@/hooks/use-yc-jobs";
+import { DEFAULT_JOB_CATEGORY, flattenJobs, useInfiniteJobs } from "@/hooks/use-jobs";
 
 const PREVIEW_COUNT = 6;
 
 const JobsPreviewSection = () => {
-  const { data, isLoading, isError, error, refetch } = useInfiniteYCJobs(DEFAULT_YC_JOB_CATEGORY);
+  const { data, isLoading, isError, error, refetch } = useInfiniteJobs(DEFAULT_JOB_CATEGORY);
   const jobs = flattenJobs(data?.pages).slice(0, PREVIEW_COUNT);
 
   return (
@@ -17,13 +17,13 @@ const JobsPreviewSection = () => {
         <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <Badge variant="accent" className="rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em]">
-              Real YC Jobs
+              Real Startup Jobs
             </Badge>
             <h2 className="mt-5 font-display text-3xl font-semibold tracking-tight md:text-4xl">
-              Browse live roles from Work at a Startup
+              Browse live roles from startup career pages
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              See current YC startup openings directly on Scout before you generate outreach.
+              See current roles from public ATS feeds and curated YC listings before you generate outreach.
             </p>
           </div>
 
@@ -45,7 +45,7 @@ const JobsPreviewSection = () => {
             </div>
             <h3 className="mt-5 font-display text-2xl font-semibold">Failed to load jobs</h3>
             <p className="mt-3 text-muted-foreground">
-              {error instanceof Error ? error.message : "The YC jobs preview did not load."}
+              {error instanceof Error ? error.message : "The jobs preview did not load."}
             </p>
             <Button variant="outline" className="mt-6 rounded-full" onClick={() => void refetch()}>
               Retry

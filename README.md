@@ -68,6 +68,43 @@ This is not a finished product — it is an experiment built in public.
 
 ---
 
+## Local Jobs API
+
+The jobs page can run without Supabase for local development.
+
+```bash
+npm run dev
+```
+
+This starts:
+
+- Vite on `http://localhost:8080`
+- A local jobs API on `http://localhost:8787`
+- A JSON cache at `.scout/jobs-cache.json`
+
+Import sources dynamically:
+
+```bash
+curl -X POST http://localhost:8787/api/job-sources/import \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sources": [
+      { "companyName": "Linear", "careersUrl": "https://jobs.ashbyhq.com/Linear" },
+      { "companyName": "Vercel", "careersUrl": "https://boards.greenhouse.io/vercel" }
+    ]
+  }'
+```
+
+Sync imported sources:
+
+```bash
+curl -X POST http://localhost:8787/api/jobs/sync
+```
+
+The app intentionally does not ship with hardcoded company sources. Jobs appear after sources are imported and synced.
+
+---
+
 ## Vision
 
 Scout aims to become the place where:

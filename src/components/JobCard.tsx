@@ -1,13 +1,20 @@
 import { ArrowUpRight, Briefcase, Building2, Clock3, MapPin } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { YCJob } from "@/hooks/use-yc-jobs";
+import { JobListing } from "@/hooks/use-jobs";
 import { useState } from "react";
 
 interface JobCardProps {
-  job: YCJob;
+  job: JobListing;
   index: number;
 }
+
+const sourceLabels: Record<JobListing["sourceType"], string> = {
+  greenhouse: "Greenhouse",
+  lever: "Lever",
+  ashby: "Ashby",
+  yc: "YC",
+};
 
 const JobCard = ({ job, index }: JobCardProps) => {
   const [logoError, setLogoError] = useState(false);
@@ -57,6 +64,9 @@ const JobCard = ({ job, index }: JobCardProps) => {
       <div className="mt-4 flex flex-wrap gap-2">
         <Badge variant="accent">{job.roleType}</Badge>
         <Badge variant="outline">{job.jobType}</Badge>
+        <Badge variant="secondary">{sourceLabels[job.sourceType]}</Badge>
+        {job.workplaceType && <Badge variant="outline">{job.workplaceType}</Badge>}
+        {job.salaryText && <Badge variant="tag">{job.salaryText}</Badge>}
         {job.companyLastActiveAt && <Badge variant="tag">Active {job.companyLastActiveAt}</Badge>}
       </div>
 
@@ -71,7 +81,7 @@ const JobCard = ({ job, index }: JobCardProps) => {
         </p>
         <p className="flex items-center gap-2">
           <Clock3 className="h-4 w-4" />
-          <span>Official YC listing</span>
+          <span>{sourceLabels[job.sourceType]} listing</span>
         </p>
       </div>
 
@@ -84,7 +94,7 @@ const JobCard = ({ job, index }: JobCardProps) => {
         </Button>
         <Button asChild variant="outline" className="rounded-full">
           <a href={job.applyUrl} target="_blank" rel="noopener noreferrer">
-            Apply on YC
+            Apply
             <ArrowUpRight className="h-4 w-4" />
           </a>
         </Button>

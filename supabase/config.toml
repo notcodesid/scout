@@ -12,5 +12,14 @@ verify_jwt = false
 [functions.sync-yc-jobs]
 verify_jwt = false
 
+[functions.fetch-jobs]
+verify_jwt = false
+
+[functions.sync-public-jobs]
+verify_jwt = false
+
+[functions.import-job-sources]
+verify_jwt = false
+
 [functions.match-startups]
 verify_jwt = false

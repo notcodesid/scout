@@ -57,6 +57,10 @@ const generateUuid = () => {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
+};
+
 const ColdEmailForm = () => {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
@@ -172,10 +176,10 @@ const ColdEmailForm = () => {
         setMatchedStartups(matches);
         setSelectedStartups(matches.slice(0, 5).map((startup) => startup.id));
         setStep(2);
-      } catch (error: any) {
+      } catch (error: unknown) {
         toast({
           title: "Matching failed",
-          description: error.message || "Could not match startups right now. Please try again.",
+          description: getErrorMessage(error, "Could not match startups right now. Please try again."),
           variant: "destructive",
         });
       } finally {
@@ -285,11 +289,11 @@ const ColdEmailForm = () => {
         title: "Emails generated!",
         description: `${emailData.emails?.length || 0} personalized cold emails are ready`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Submit error:", error);
       toast({
         title: "Error",
-        description: error.message || "Something went wrong. Please try again.",
+        description: getErrorMessage(error, "Something went wrong. Please try again."),
         variant: "destructive",
       });
     } finally {

@@ -37,7 +37,7 @@ const Hero = () => {
         <p className="mx-auto mt-8 max-w-lg text-lg md:text-xl text-muted-foreground animate-fade-in" style={{
         animationDelay: "0.2s"
       }}>
-          Scout helps you find real YC startup roles and generate tailored cold emails for the opportunities worth chasing.
+          Scout helps you find real startup roles and generate tailored cold emails for the opportunities worth chasing.
         </p>
 
         {/* CTA Button */}
