@@ -159,7 +159,7 @@ Return JSON with exactly these fields:
   "linkedin": "shorter LinkedIn DM draft",
   "x": "shorter X/Twitter DM draft",
   "followUp": "a short follow-up for 5-7 days later",
-  "notes": "3-5 bullets telling the candidate exactly what to fill in before sending"
+  "notes": "a single string, one action per line, telling the candidate exactly what to fill in before sending"
 }`;
 }
 

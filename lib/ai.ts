@@ -6,6 +6,7 @@ import type {
   FitAnalysis,
   OutreachPack,
   ProofTask,
+  QualityFlag,
   QualityReport,
 } from "./types";
 import {
@@ -28,7 +29,7 @@ export interface AIResult<T> {
 }
 
 const DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/";
-const DEFAULT_MODEL = "gemini-3-flash";
+const DEFAULT_MODEL = "gemini-3.5-flash";
 
 function parseJSON<T>(text: string): T | null {
   const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
@@ -64,6 +65,109 @@ function parseJSON<T>(text: string): T | null {
     }
   }
   return null;
+}
+
+function asString(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.join("\n");
+  if (value == null) return "";
+  return String(value);
+}
+
+function asStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((v) => asString(v)).filter(Boolean);
+  if (typeof value === "string") {
+    return value
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function normalizeDossier(d: Partial<Dossier>): Dossier {
+  return {
+    companyName: asString(d.companyName),
+    oneLiner: asString(d.oneLiner),
+    problem: asString(d.problem),
+    users: asString(d.users),
+    differentiation: asString(d.differentiation),
+    team: asStringArray(d.team),
+    role: asString(d.role),
+    likelyNeeds: asStringArray(d.likelyNeeds),
+    competitors: asStringArray(d.competitors),
+    sources: asStringArray(d.sources),
+    openQuestions: asStringArray(d.openQuestions),
+    verified: Boolean(d.verified),
+  };
+}
+
+function normalizeFit(f: Partial<FitAnalysis>): FitAnalysis {
+  const rec = f.recommendation;
+  return {
+    strongMatches: asStringArray(f.strongMatches),
+    weakMatches: asStringArray(f.weakMatches),
+    missingProof: asStringArray(f.missingProof),
+    recommendation:
+      rec === "apply" || rec === "wait" || rec === "skip" ? rec : "wait",
+    reasoning: asString(f.reasoning),
+    genuineInterest:
+      f.genuineInterest === "yes" ||
+      f.genuineInterest === "no" ||
+      f.genuineInterest === "unsure"
+        ? f.genuineInterest
+        : "",
+  };
+}
+
+function normalizeTask(
+  t: Partial<Omit<ProofTask, "id" | "done" | "evidenceLink" | "notes">>
+): Omit<ProofTask, "id" | "done" | "evidenceLink" | "notes"> {
+  const type = t.type;
+  const effort = t.effort;
+  return {
+    title: asString(t.title),
+    type:
+      type === "build" || type === "distribution" || type === "research" || type === "other"
+        ? type
+        : "other",
+    effort:
+      effort === "30 min" ||
+      effort === "1-2 hrs" ||
+      effort === "half day" ||
+      effort === "a day"
+        ? effort
+        : "1-2 hrs",
+    why: asString(t.why),
+    output: asString(t.output),
+  };
+}
+
+function normalizeOutreach(o: Partial<OutreachPack>): OutreachPack {
+  return {
+    email: asString(o.email),
+    linkedin: asString(o.linkedin),
+    x: asString(o.x),
+    followUp: asString(o.followUp),
+    notes: asString(o.notes),
+  };
+}
+
+function normalizeQuality(q: Partial<QualityReport>): QualityReport {
+  const rawFlags = Array.isArray(q.flags) ? q.flags : [];
+  return {
+    score: typeof q.score === "number" ? Math.max(0, Math.min(100, Math.round(q.score))) : 0,
+    verdict: asString(q.verdict),
+    flags: rawFlags.map((f) => {
+      const sev = (f as QualityFlag)?.severity;
+      return {
+        severity:
+          sev === "critical" || sev === "warning" || sev === "info" ? sev : "info",
+        label: asString((f as QualityFlag)?.label),
+        detail: asString((f as QualityFlag)?.detail),
+      };
+    }),
+  };
 }
 
 async function callProvider(
@@ -156,7 +260,7 @@ export function buildDossier(opts: {
   config?: AIConfig;
 }): Promise<AIResult<Dossier>> {
   const host = hostFromUrl(opts.company.url);
-  return generateJSON<Dossier>({
+  return generateJSON<Partial<Dossier>>({
     system: DOSSIER_SYSTEM,
     user: dossierUser({
       companyUrl: opts.company.url,
@@ -165,7 +269,7 @@ export function buildDossier(opts: {
       profile: opts.profile,
     }),
     config: opts.config,
-    fallback: () => ({
+    fallback: () => normalizeDossier({
       companyName: host.charAt(0).toUpperCase() + host.slice(1),
       oneLiner: "Sample: what this company does, in one sentence.",
       problem: "Sample: the real problem they solve and for whom.",
@@ -185,7 +289,7 @@ export function buildDossier(opts: {
       ],
       verified: false,
     }),
-  });
+  }).then((res) => ({ data: normalizeDossier(res.data), mock: res.mock }));
 }
 
 export function analyzeFit(opts: {
@@ -195,11 +299,11 @@ export function analyzeFit(opts: {
 }): Promise<AIResult<FitAnalysis>> {
   const projectNames =
     opts.profile.projects.map((p) => p.name).join(", ") || "no projects yet";
-  return generateJSON<FitAnalysis>({
+  return generateJSON<Partial<FitAnalysis>>({
     system: FIT_SYSTEM,
     user: fitUser({ profile: opts.profile, dossier: opts.dossier }),
     config: opts.config,
-    fallback: () => ({
+    fallback: () => normalizeFit({
       strongMatches: [
         projectNames
           ? `Evidence: ${projectNames}`
@@ -217,7 +321,7 @@ export function analyzeFit(opts: {
         "Sample (mock mode, no AI key configured). Add your Gemini or OpenAI key to get a real analysis.",
       genuineInterest: "",
     }),
-  });
+  }).then((res) => ({ data: normalizeFit(res.data), mock: res.mock }));
 }
 
 export function suggestProofTasks(opts: {
@@ -227,37 +331,40 @@ export function suggestProofTasks(opts: {
   config?: AIConfig;
 }): Promise<AIResult<{ tasks: Omit<ProofTask, "id" | "done" | "evidenceLink" | "notes">[] }>> {
   return generateJSON<{
-    tasks: Omit<ProofTask, "id" | "done" | "evidenceLink" | "notes">[];
+    tasks: Partial<Omit<ProofTask, "id" | "done" | "evidenceLink" | "notes">>[];
   }>({
     system: PROOF_SYSTEM,
     user: proofUser({ profile: opts.profile, dossier: opts.dossier, fit: opts.fit }),
     config: opts.config,
     fallback: () => ({
       tasks: [
-        {
+        normalizeTask({
           title: `Walk through ${opts.dossier.companyName}'s onboarding and write up one real friction point`,
           type: "research",
           effort: "1-2 hrs",
           why: "Shows you actually used the product and can spot problems, not just describe it.",
           output: "A short post (link) or a one-page doc with screenshots and one suggested fix.",
-        },
-        {
+        }),
+        normalizeTask({
           title: "Build a small artifact that solves a problem adjacent to theirs",
           type: "build",
           effort: "half day",
           why: "Proof of execution: shipped something real, linkable, related to their space.",
           output: "A live link or repo with a README that states the problem and outcome.",
-        },
-        {
+        }),
+        normalizeTask({
           title: "Share the artifact in a relevant community and collect feedback",
           type: "distribution",
           effort: "30 min",
           why: "Shipping without distribution is incomplete signal. Real users matter more than polish.",
           output: "The post link plus 3-5 comments or user reactions you can quote.",
-        },
+        }),
       ],
     }),
-  });
+  }).then((res) => ({
+    data: { tasks: res.data.tasks.map(normalizeTask) },
+    mock: res.mock,
+  }));
 }
 
 export function draftOutreach(opts: {
@@ -268,7 +375,7 @@ export function draftOutreach(opts: {
   contacts: string[];
   config?: AIConfig;
 }): Promise<AIResult<OutreachPack>> {
-  return generateJSON<OutreachPack>({
+  return generateJSON<Partial<OutreachPack>>({
     system: OUTREACH_SYSTEM,
     user: outreachUser({
       profile: opts.profile,
@@ -278,18 +385,19 @@ export function draftOutreach(opts: {
       contacts: opts.contacts,
     }),
     config: opts.config,
-    fallback: () => ({
-      email: `Hi [FOUNDER NAME],\n\nI went through ${opts.dossier.companyName}'s product this week and [WHAT YOU NOTICED USING THE PRODUCT].\n\nI built [PROJECT NAME] ([PROJECT LINK]) used by [NUMBER] people solving [PROBLEM]. I think that maps to [SPECIFIC LIKELY NEED].\n\nI put together [PROOF ARTIFACT LINK] after spending time on your onboarding. Happy to talk it through.\n\n[YOUR NAME]\n[GITHUB / PORTFOLIO]`,
-      linkedin: `Hi [NAME], I used ${opts.dossier.companyName}'s product and noticed [SPECIFIC OBSERVATION]. I built [PROJECT] ([LINK]) used by [N] people. I wrote up one fix idea here: [LINK]. Would love to help.`,
-      x: `Used ${opts.dossier.companyName} today. [SPECIFIC OBSERVATION]. Built [PROJECT] ([LINK], [N] users). Wrote up a fix: [LINK]. Happy to help.`,
-      followUp: `Hi [NAME], circling back once in case this got buried. Happy to walk through [PROOF ARTIFACT]. No worries either way.`,
-      notes: [
-        "Fill in [FOUNDER NAME] and the specific observation you noticed using the product.",
-        "Add your real project link and numbers. Never claim unfinished work.",
-        "Keep the email under 150 words. Cut anything that sounds generic.",
-      ].join("\n"),
-    }),
-  });
+    fallback: () =>
+      normalizeOutreach({
+        email: `Hi [FOUNDER NAME],\n\nI went through ${opts.dossier.companyName}'s product this week and [WHAT YOU NOTICED USING THE PRODUCT].\n\nI built [PROJECT NAME] ([PROJECT LINK]) used by [NUMBER] people solving [PROBLEM]. I think that maps to [SPECIFIC LIKELY NEED].\n\nI put together [PROOF ARTIFACT LINK] after spending time on your onboarding. Happy to talk it through.\n\n[YOUR NAME]\n[GITHUB / PORTFOLIO]`,
+        linkedin: `Hi [NAME], I used ${opts.dossier.companyName}'s product and noticed [SPECIFIC OBSERVATION]. I built [PROJECT] ([LINK]) used by [N] people. I wrote up one fix idea here: [LINK]. Would love to help.`,
+        x: `Used ${opts.dossier.companyName} today. [SPECIFIC OBSERVATION]. Built [PROJECT] ([LINK], [N] users). Wrote up a fix: [LINK]. Happy to help.`,
+        followUp: `Hi [NAME], circling back once in case this got buried. Happy to walk through [PROOF ARTIFACT]. No worries either way.`,
+        notes: [
+          "Fill in [FOUNDER NAME] and the specific observation you noticed using the product.",
+          "Add your real project link and numbers. Never claim unfinished work.",
+          "Keep the email under 150 words. Cut anything that sounds generic.",
+        ].join("\n"),
+      }),
+  }).then((res) => ({ data: normalizeOutreach(res.data), mock: res.mock }));
 }
 
 export function checkQuality(opts: {
@@ -303,11 +411,11 @@ export function checkQuality(opts: {
   const hasPlaceholders = /\[[A-Z\s]+\]/.test(
     [opts.outreach.email, opts.outreach.linkedin, opts.outreach.x].join("\n")
   );
-  return generateJSON<QualityReport>({
+  return generateJSON<Partial<QualityReport>>({
     system: QUALITY_SYSTEM,
     user: qualityUser({ outreach: opts.outreach, dossier: opts.dossier }),
     config: opts.config,
-    fallback: () => ({
+    fallback: () => normalizeQuality({
       score: hasPlaceholders ? 45 : hasLinks ? 70 : 55,
       verdict: hasPlaceholders
         ? "Sample: draft is a good skeleton but unfilled placeholders are an instant reject. Complete it before sending."
@@ -338,5 +446,5 @@ export function checkQuality(opts: {
         },
       ],
     }),
-  });
+  }).then((res) => ({ data: normalizeQuality(res.data), mock: res.mock }));
 }

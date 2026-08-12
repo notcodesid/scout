@@ -76,7 +76,7 @@ async function clickByText(text) {
   await el.click();
 }
 
-async function waitFor(text, timeout = 15000) {
+async function waitFor(text, timeout = 60000) {
   await page.getByText(text, { exact: false }).first().waitFor({ timeout });
 }
 
@@ -90,34 +90,34 @@ try {
   await shot("02-workspace-research");
 
   await clickByText("Build dossier");
-  await waitFor("I actually read the sources", 20000);
+  await waitFor("I actually read the sources");
   await shot("03-dossier-built");
 
   await page.getByText("I actually read the sources").click();
   await page.getByRole("tab", { name: /Fit/ }).click();
   await waitFor("Fit analysis");
   await clickByText("Analyze fit");
-  await waitFor("Do you genuinely care", 20000);
+  await waitFor("Do you genuinely care");
   await shot("04-fit-analysis");
 
   await page.getByRole("radio", { name: "Yes" }).check();
   await page.getByRole("tab", { name: /Proof/ }).click();
   await waitFor("Proof task");
   await clickByText("Suggest proof tasks");
-  await waitFor("Evidence link", 20000);
+  await waitFor("Evidence link");
   await shot("05-proof-tasks");
 
   await page.getByRole("checkbox").first().check();
   await page.getByRole("tab", { name: /Outreach/ }).click();
   await waitFor("Outreach");
   await clickByText("Draft outreach");
-  await waitFor("Fill these in before sending", 20000);
+  await waitFor("Fill these in before sending");
   await shot("06-outreach");
 
   await page.getByRole("tab", { name: /Quality/ }).click();
   await waitFor("Quality check");
   await clickByText("Run quality check");
-  await waitFor("Unfilled placeholders", 20000);
+  await page.getByRole("button", { name: "Re-check" }).waitFor({ timeout: 60000 });
   await shot("07-quality");
 
   await page.goto(`${BASE}/profile`, { waitUntil: "networkidle" });

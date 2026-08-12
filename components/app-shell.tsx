@@ -127,7 +127,7 @@ function AISettings() {
                   id="ai-model"
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  placeholder="gemini-3-flash"
+                  placeholder="gemini-3.5-flash"
                   autoComplete="off"
                 />
               </div>

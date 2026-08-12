@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 const DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/";
-const DEFAULT_MODEL = "gemini-3-flash";
+const DEFAULT_MODEL = "gemini-3.5-flash";
 
 export async function POST(req: Request) {
   let body: { system?: string; user?: string; model?: string } = {};
