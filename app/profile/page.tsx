@@ -1,9 +1,9 @@
 import { getProfile } from "@/lib/profile";
-import { ProfileEditor } from "@/components/profile/profile-editor";
+import { ProfileWizard } from "@/components/profile/profile-wizard";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
   const profile = await getProfile();
-  return <ProfileEditor initialProfile={profile} />;
+  return <ProfileWizard initialProfile={profile} />;
 }

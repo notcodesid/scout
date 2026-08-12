@@ -12,33 +12,50 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
 
 page.on("pageerror", (err) => console.log("PAGEERROR:", err.message.slice(0, 300)));
 
+async function stepTitle() {
+  return page.locator("h2").first().innerText();
+}
+
+async function continueTo(expectedHeading) {
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByText(expectedHeading, { exact: true }).first().waitFor({ timeout: 20000 });
+  console.log("STEP:", await stepTitle());
+}
+
 try {
   await page.goto(`${BASE}/profile`, { waitUntil: "networkidle" });
-  await page.getByText("Evidence profile").first().waitFor();
+  await page.getByText("Build your evidence profile").first().waitFor();
+  console.log("STEP:", await stepTitle()); // Basics
 
-  // Fill core fields
-  await page.locator("#p-name").fill("Siddharth Test");
+  // 1. Basics
+  await page.locator("#p-name").fill("Siddharth");
   await page.locator("#p-headline").fill("Full-stack developer who ships for real users");
   await page.locator("#p-about").fill("Two years building data infrastructure, side projects used by real people.");
   await page.locator("#p-email").fill("test@example.com");
+  await continueTo("Position");
+
+  // 2. Position
   await page.locator("#p-github").fill("siddharth-test");
+  await page.locator("#p-roles").fill("Full-stack engineer, Frontend engineer");
+  await continueTo("Links");
 
-  // Add a link
-  await page.getByRole("button", { name: "Add", exact: true }).first().click();
-  const linkLabel = page.getByPlaceholder("GitHub");
-  await linkLabel.last().fill("GitHub");
+  // 3. Links
+  await page.getByRole("button", { name: "Add link" }).click();
+  await page.getByPlaceholder("GitHub").last().fill("GitHub");
   await page.getByPlaceholder("https://...").last().fill("https://github.com/siddharth-test");
+  await continueTo("Skills");
 
-  // Add a skill
-  await page.getByRole("button", { name: "Add", exact: true }).nth(1).click();
-  const skillName = page.getByPlaceholder("TypeScript");
-  await skillName.last().fill("TypeScript");
+  // 4. Skills
+  await page.getByRole("button", { name: "Add skill" }).click();
+  await page.getByPlaceholder("TypeScript").last().fill("TypeScript");
   await page.getByPlaceholder("Years").last().fill("3");
+  await continueTo("Projects");
 
-  // Add a project with the proof fields
+  // 5. Projects (proof fields)
   await page.getByRole("button", { name: "Add project" }).click();
-  const projectName = page.getByPlaceholder("Tool that helps design students track submissions");
-  await projectName.fill("Deadline tracker for design students");
+  await page
+    .getByPlaceholder("Tool that helps design students track submissions")
+    .fill("Deadline tracker for design students");
   await page
     .getByPlaceholder("Students miss deadlines across 5+ platforms...")
     .fill("Students miss deadlines across 5+ platforms");
@@ -50,29 +67,44 @@ try {
     .fill("Used by 150+ students; ~2k checks a week");
   await page
     .getByPlaceholder("Posted in 3 design communities; 40 signups in week one...")
-    .fill("Posted in 3 design communities; 40 signups in week one, 15 stayed active");
+    .fill("Posted in 3 design communities; 40 signups in week one");
+  await continueTo("Experience");
 
-  // Add experience
-  await page.getByRole("button", { name: "Add", exact: true }).nth(2).click();
+  // 6. Experience
+  await page.getByRole("button", { name: "Add experience" }).click();
   await page.locator("#exp-0-company").fill("Acme Data");
   await page.locator("#exp-0-role").fill("Software Engineer");
   await page.locator("#exp-0-summary").fill("Owned the ingestion pipeline end to end.");
+  await continueTo("Education");
 
-  // Save
-  await page.getByRole("button", { name: "Save profile" }).click();
-  await page.getByText("Saved", { exact: true }).first().waitFor({ timeout: 20000 });
-  console.log("SAVE_OK");
+  // 7. Education — skip, continue
+  await continueTo("Review your profile");
 
-  // Reload and verify persistence
+  // Review: 6 of 7 complete (education empty)
+  const reviewText = await page.evaluate(() => document.body.innerText);
+  if (!reviewText.includes("6 of 7")) throw new Error("Review count mismatch");
+  console.log("REVIEW_OK");
+
+  // Finish
+  await page.getByRole("button", { name: "Finish" }).click();
+  await page.getByText("Profile saved", { exact: true }).first().waitFor({ timeout: 20000 });
+  console.log("FINISH_OK");
+
+  // Reload: wizard should resume at Education (first incomplete step)
   await page.reload({ waitUntil: "networkidle" });
-  await page.getByText("Evidence profile").first().waitFor();
-  const name = await page.locator("#p-name").inputValue();
-  const github = await page.locator("#p-github").inputValue();
-  const projectCount = await page.getByText(/Project \d+/).count();
-  console.log("RELOAD_NAME:", name);
-  console.log("RELOAD_GITHUB:", github);
-  console.log("RELOAD_PROJECTS:", projectCount);
-  if (name !== "Siddharth Test" || github !== "siddharth-test" || projectCount < 1) {
+  await page.getByText("Build your evidence profile").first().waitFor();
+  console.log("RESUME_STEP:", await stepTitle());
+  const apiProfile = await page.evaluate(async () => {
+    const res = await fetch("/api/profile");
+    return res.json();
+  });
+  console.log("API_NAME:", apiProfile.name);
+  console.log("API_GITHUB:", apiProfile.githubUsername);
+  if (
+    apiProfile.name !== "Siddharth" ||
+    apiProfile.githubUsername !== "siddharth-test" ||
+    apiProfile.projects?.length !== 1
+  ) {
     throw new Error("Persistence check failed");
   }
   console.log("PERSIST_OK");
