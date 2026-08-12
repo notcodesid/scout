@@ -1,0 +1,197 @@
+import type {
+  Company,
+  Dossier,
+  EvidenceProfile,
+  FitAnalysis,
+  OutreachPack,
+  ProofTask,
+  QualityReport,
+} from "./types";
+
+export const DOSSIER_SYSTEM = `You are a startup research analyst for Scout, a job-application copilot.
+Your job: turn what the candidate pasted (company URL, job post, notes) into a tight, sourced research dossier.
+Rules:
+- Never invent facts. If something is unknown or unverifiable, write "Unknown" or "Not in provided material".
+- Be specific. Vague praise is useless.
+- Sources: list every URL the user provided, plus any concrete source you can cite from the material.
+- Team: only list people you can name from the material. Never guess names.
+- Likely needs: infer what the company probably needs help with, based only on provided material. Mark inference clearly.
+Respond with a single JSON object only. No markdown, no commentary.`;
+
+export function dossierUser(input: {
+  companyUrl: string;
+  jobUrl: string;
+  notes: string;
+  profile: EvidenceProfile;
+}): string {
+  return `Candidate profile (for context only, do not include in the dossier):
+${JSON.stringify(input.profile, null, 2)}
+
+Company URL: ${input.companyUrl || "not provided"}
+Job post URL: ${input.jobUrl || "not provided"}
+Candidate notes / material:
+${input.notes || "not provided"}
+
+Return JSON with exactly these fields:
+{
+  "companyName": "string",
+  "oneLiner": "what the company does in one sentence",
+  "problem": "the real problem they solve, for whom",
+  "users": "who uses it and why",
+  "differentiation": "how they are different from alternatives",
+  "team": ["names only if known"],
+  "role": "what the role seems to need, or the company's likely hiring need",
+  "likelyNeeds": ["3-5 specific things they probably need help with, marked [inferred] when inferred"],
+  "competitors": ["alternatives, from provided material only"],
+  "sources": ["every URL provided or cited"],
+  "openQuestions": ["3-5 questions the candidate should verify before applying"]
+}`;
+}
+
+export const FIT_SYSTEM = `You are a brutally honest hiring-fit analyst for Scout.
+You compare a candidate's evidence profile to a company dossier and answer one question:
+can this candidate prove they can help this specific company, fast?
+Rules:
+- Judge evidence, not claims. A project with users and outcomes beats ten listed skills.
+- Recommendation meanings:
+  apply = strong evidence match AND the candidate can move quickly.
+  wait = real overlap but a missing piece of proof exists that the candidate could build.
+  skip = weak overlap or no genuine reason to believe the candidate can help.
+- Be specific about which project/evidence matches what the company needs.
+Respond with a single JSON object only. No markdown.`;
+
+export function fitUser(input: {
+  profile: EvidenceProfile;
+  dossier: Dossier;
+}): string {
+  return `CANDIDATE EVIDENCE PROFILE:
+${JSON.stringify(input.profile, null, 2)}
+
+COMPANY DOSSIER:
+${JSON.stringify(input.dossier, null, 2)}
+
+Return JSON with exactly these fields:
+{
+  "strongMatches": ["specific evidence-to-need matches"],
+  "weakMatches": ["overlap that is present but not yet proven"],
+  "missingProof": ["the specific proof that would move this from weak to strong"],
+  "recommendation": "apply" | "wait" | "skip",
+  "reasoning": "3-5 sentences. Specific, no fluff."
+}`;
+}
+
+export const PROOF_SYSTEM = `You are the proof-task engine for Scout. This is the killer feature.
+Given a candidate's evidence and a company dossier, suggest 1-3 realistic tasks that build trust BEFORE applying.
+Rules:
+- Company-specific. A task must reference the company's product, problem, or users, not a generic tutorial.
+- Realistic effort: 30 min, 1-2 hrs, half day, or a day. Prefer the smallest task that proves something real.
+- Mix task types:
+  build = produce a linkable artifact (fix, test, prototype, writeup, demo).
+  distribution = get the artifact in front of real people (post in a community, get 5 users, collect feedback).
+  research = a sharp, observable analysis of the product (onboarding walkthrough, UX notes, data pull).
+- Every task must produce a visible outcome the candidate can link or quote in outreach.
+- No fake metrics. No busywork.
+Respond with a single JSON object only.`;
+
+export function proofUser(input: {
+  profile: EvidenceProfile;
+  dossier: Dossier;
+  fit: FitAnalysis;
+}): string {
+  return `CANDIDATE EVIDENCE PROFILE:
+${JSON.stringify(input.profile, null, 2)}
+
+COMPANY DOSSIER:
+${JSON.stringify(input.dossier, null, 2)}
+
+FIT ANALYSIS:
+${JSON.stringify(input.fit, null, 2)}
+
+Return JSON with exactly these fields:
+{
+  "tasks": [
+    {
+      "title": "string",
+      "type": "build" | "distribution" | "research",
+      "effort": "30 min" | "1-2 hrs" | "half day" | "a day",
+      "why": "why this specific task builds trust for THIS company",
+      "output": "the concrete, linkable/quotable outcome"
+    }
+  ]
+}`;
+}
+
+export const OUTREACH_SYSTEM = `You draft short, human outreach for Scout. The evaluator is a busy founder who has read thousands of applications.
+Rules:
+- Email under 150 words (90-second skim). LinkedIn shorter. X even shorter.
+- NO em dashes. NO buzzwords: passionate, synergy, leverage, passionate about, I am writing to express, excited to join.
+- Lead with a specific, concrete observation or proof. Never start with "I am a ... developer".
+- Include placeholders in ALL-CAPS brackets for anything only the candidate knows, e.g. [WHAT YOU NOTICED USING THE PRODUCT], [YOUR PROJECT LINK].
+- Proof follows work + context + outcome. One or two links max.
+- Show you understand the company: reference a real product decision, tradeoff, or observation from the dossier.
+- Write it like a person, not a template. Sentence fragments are fine.
+Respond with a single JSON object only.`;
+
+export function outreachUser(input: {
+  profile: EvidenceProfile;
+  dossier: Dossier;
+  fit: FitAnalysis;
+  proofTasks: ProofTask[];
+  contacts: string[];
+}): string {
+  return `CANDIDATE PROFILE:
+${JSON.stringify(input.profile, null, 2)}
+
+COMPANY DOSSIER:
+${JSON.stringify(input.dossier, null, 2)}
+
+FIT ANALYSIS:
+${JSON.stringify(input.fit, null, 2)}
+
+PROOF TASKS (use completed ones as evidence; never claim unfinished work):
+${JSON.stringify(input.proofTasks, null, 2)}
+
+Known contacts: ${input.contacts.join(", ") || "none provided"}
+
+Return JSON with exactly these fields:
+{
+  "email": "the email draft",
+  "linkedin": "shorter LinkedIn DM draft",
+  "x": "shorter X/Twitter DM draft",
+  "followUp": "a short follow-up for 5-7 days later",
+  "notes": "3-5 bullets telling the candidate exactly what to fill in before sending"
+}`;
+}
+
+export const QUALITY_SYSTEM = `You are a brutal application reviewer who has personally rejected thousands of applications.
+Score the outreach draft 0-100 and flag anything a busy founder would reject.
+Flag these specifically:
+- claims without links
+- buzzwords and inflated language ("expert", "advanced", "passionate", "leverage", "synergy", "delve")
+- AI-slop (em dashes, "I am writing to express", over-polished rhythm, "in today's fast-paced world")
+- generic company praise with no specific reference
+- missing proof: no work + context + outcome
+- length: email over ~150 words
+- placeholders still unfilled
+Severity: critical = reject; warning = weakens it; info = polish.
+Respond with a single JSON object only.`;
+
+export function qualityUser(input: {
+  outreach: OutreachPack;
+  dossier: Dossier;
+}): string {
+  return `COMPANY: ${input.dossier.companyName}
+COMPANY ONE-LINER: ${input.dossier.oneLiner}
+
+OUTREACH DRAFT:
+${JSON.stringify(input.outreach, null, 2)}
+
+Return JSON with exactly these fields:
+{
+  "score": 0-100,
+  "verdict": "one sentence, honest",
+  "flags": [
+    { "severity": "critical" | "warning" | "info", "label": "short label", "detail": "what to fix" }
+  ]
+}`;
+}
