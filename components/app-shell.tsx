@@ -53,7 +53,7 @@ function ThemeToggle() {
   );
 }
 
-function AISettings() {
+function AISettings({ envConfigured }: { envConfigured: boolean }) {
   const { state, setAI } = useScout();
   const [open, setOpen] = useState(false);
   const [baseUrl, setBaseUrl] = useState(state.ai.baseUrl);
@@ -75,7 +75,7 @@ function AISettings() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const configured = Boolean(state.ai.apiKey.trim());
+  const configured = Boolean(state.ai.apiKey.trim()) || envConfigured;
 
   return (
     <>
@@ -161,7 +161,7 @@ function AISettings() {
                 <p className="text-xs text-muted-foreground">
                   Status:{" "}
                   <span className={configured ? "font-medium text-emerald-600 dark:text-emerald-400" : "font-medium"}>
-                    {configured ? "configured" : "mock mode"}
+                    {configured ? "live" : "mock mode"}
                   </span>
                 </p>
                 <Button
@@ -184,7 +184,26 @@ function AISettings() {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { state } = useScout();
-  const aiConfigured = Boolean(state.ai.apiKey.trim());
+  const [envConfigured, setEnvConfigured] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/ai")
+      .then((res) => res.json().catch(() => null))
+      .then((data) => {
+        if (!cancelled && data && typeof data.configured === "boolean") {
+          setEnvConfigured(data.configured);
+        }
+      })
+      .catch(() => {
+        // keep default (false); the badge stays on mock
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const aiConfigured = Boolean(state.ai.apiKey.trim()) || envConfigured;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -236,7 +255,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {aiConfigured ? "AI on" : "Mock"}
             </span>
             <ThemeToggle />
-            <AISettings />
+            <AISettings envConfigured={envConfigured} />
           </div>
         </div>
       </header>
