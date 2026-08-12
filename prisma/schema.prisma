@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Singleton user for now (no auth). The evidence profile is the raw material
+// every application draws from: work + context + outcome + "did anyone care?".
+model User {
+  id             String       @id @default(uuid())
+  name           String       @default("")
+  headline       String       @default("")
+  about          String       @default("")
+  email          String       @default("")
+  phone          String       @default("")
+  location       String       @default("")
+  timezone       String       @default("")
+  githubUsername String       @default("")
+  availability   String       @default("")
+  remote         Boolean      @default(false)
+  openToRelocate Boolean      @default(false)
+  targetRoles    String[]     @default([])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  links          ProfileLink[]
+  skills         Skill[]
+  projects       Project[]
+  education      Education[]
+  experience     Experience[]
+}
+
+// Resume, GitHub, portfolio, LinkedIn, X — anything an evaluator can click.
+model ProfileLink {
+  id        String   @id @default(uuid())
+  userId    String
+  label     String
+  url       String
+  sortOrder Int      @default(0)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Skill {
+  id        String @id @default(uuid())
+  userId    String
+  name      String
+  years     Int    @default(0)
+  sortOrder Int    @default(0)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+// The core proof. problem = context, work = what you built,
+// outcome = visible numbers, users = "did anyone actually care?".
+model Project {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  problem   String   @default("")
+  work      String   @default("")
+  outcome   String   @default("")
+  users     String   @default("")
+  links     String[] @default([])
+  tags      String[] @default([])
+  startDate String   @default("")
+  endDate   String   @default("")
+  sortOrder Int      @default(0)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Education {
+  id        String @id @default(uuid())
+  userId    String
+  school    String
+  degree    String @default("")
+  field     String @default("")
+  startDate String @default("")
+  endDate   String @default("")
+  notes     String @default("")
+  sortOrder Int    @default(0)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Experience {
+  id        String   @id @default(uuid())
+  userId    String
+  company   String
+  role      String
+  startDate String   @default("")
+  endDate   String   @default("")
+  current   Boolean  @default(false)
+  summary   String   @default("")
+  bullets   String[] @default([])
+  sortOrder Int      @default(0)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

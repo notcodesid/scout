@@ -183,8 +183,25 @@ function AISettings({ envConfigured }: { envConfigured: boolean }) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { state } = useScout();
+  const { state, updateProfile } = useScout();
   const [envConfigured, setEnvConfigured] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/profile")
+      .then((res) => res.json().catch(() => null))
+      .then((data) => {
+        if (!cancelled && data && typeof data === "object") {
+          updateProfile(data);
+        }
+      })
+      .catch(() => {
+        // DB may not be reachable; keep the local mirror as-is
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [updateProfile]);
 
   useEffect(() => {
     let cancelled = false;

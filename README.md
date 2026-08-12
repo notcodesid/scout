@@ -25,8 +25,22 @@ verdict, and at least one completed proof task. That gate *is* the product.
 ## Stack
 
 - Next.js (App Router) + TypeScript + Tailwind CSS v4
-- Local-first: everything is stored in your browser (localStorage). No auth, no database.
+- Local-first: user profile lives in Postgres (Docker), the rest is in your browser for now.
 - AI via any OpenAI-compatible provider, defaulting to Google's free Gemini tier.
+- Prisma ORM with a full user-domain schema (links, skills, projects, experience, education).
+
+## Database
+
+```bash
+docker compose up -d          # starts Postgres on localhost:5433
+npx prisma migrate dev        # applies migrations
+npx prisma generate           # generates the client into generated/prisma
+```
+
+The connection string is `DATABASE_URL` in `.env` / `.env.local`
+(`postgresql://scout:scout@localhost:5433/scout`). Port 5433 avoids clashes
+with a system Postgres on 5432. `generated/` is gitignored; fresh clones run
+`npx prisma generate`.
 
 ## Run it
 

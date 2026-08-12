@@ -21,6 +21,12 @@ export interface ProfileLink {
   url: string;
 }
 
+export interface ProfileSkill {
+  id?: string;
+  name: string;
+  years: number;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -30,16 +36,51 @@ export interface Project {
   users: string;
   links: string[];
   tags: string[];
+  startDate: string;
+  endDate: string;
+}
+
+export interface ProfileEducation {
+  id?: string;
+  school: string;
+  degree: string;
+  field: string;
+  startDate: string;
+  endDate: string;
+  notes: string;
+}
+
+export interface ProfileExperience {
+  id?: string;
+  company: string;
+  role: string;
+  startDate: string;
+  endDate: string;
+  current: boolean;
+  summary: string;
+  bullets: string[];
 }
 
 export interface EvidenceProfile {
+  id?: string;
   name: string;
   headline: string;
+  about: string;
   location: string;
   email: string;
+  phone: string;
+  timezone: string;
+  githubUsername: string;
+  availability: string;
+  remote: boolean;
+  openToRelocate: boolean;
+  targetRoles: string[];
   links: ProfileLink[];
-  skills: string[];
+  skills: ProfileSkill[];
   projects: Project[];
+  education: ProfileEducation[];
+  experience: ProfileExperience[];
+  updatedAt?: string;
 }
 
 export interface Dossier {

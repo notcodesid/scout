@@ -24,13 +24,24 @@ import { uid } from "./utils";
 const STORAGE_KEY = "scout:v1";
 
 const emptyProfile: EvidenceProfile = {
+  id: undefined,
   name: "",
   headline: "",
+  about: "",
   location: "",
   email: "",
+  phone: "",
+  timezone: "",
+  githubUsername: "",
+  availability: "",
+  remote: false,
+  openToRelocate: false,
+  targetRoles: [],
   links: [],
   skills: [],
   projects: [],
+  education: [],
+  experience: [],
 };
 
 const emptyAI: AIConfig = { baseUrl: "", model: "", apiKey: "" };
@@ -240,15 +251,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const loadSample = useCallback(() => {
     const sample: AppState = {
       profile: {
+        id: undefined,
         name: "Your Name",
         headline: "Full-stack developer building for real users",
+        about: "",
         location: "India",
         email: "you@example.com",
+        phone: "",
+        timezone: "",
+        githubUsername: "you",
+        availability: "immediately",
+        remote: true,
+        openToRelocate: false,
+        targetRoles: ["Full-stack engineer", "Frontend engineer"],
         links: [
           { label: "GitHub", url: "https://github.com/you" },
           { label: "Portfolio", url: "https://you.dev" },
         ],
-        skills: ["TypeScript", "React", "Node.js", "Postgres"],
+        skills: [
+          { name: "TypeScript", years: 3 },
+          { name: "React", years: 3 },
+          { name: "Node.js", years: 2 },
+          { name: "Postgres", years: 2 },
+        ],
         projects: [
           {
             id: uid(),
@@ -261,8 +286,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               "Posted in 3 design communities; ~40 signups in the first week, 15 stayed active.",
             links: ["https://yoursite.com"],
             tags: ["React", "Supabase"],
+            startDate: "",
+            endDate: "",
           },
         ],
+        education: [],
+        experience: [],
       },
       companies: [
         {

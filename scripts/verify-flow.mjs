@@ -9,15 +9,27 @@ mkdirSync(OUT_DIR, { recursive: true });
 
 const sampleState = {
   profile: {
+    id: undefined,
     name: "Siddharth",
     headline: "Full-stack developer who ships for real users",
+    about: "",
     location: "India",
     email: "you@example.com",
+    phone: "",
+    timezone: "",
+    githubUsername: "you",
+    availability: "immediately",
+    remote: true,
+    openToRelocate: false,
+    targetRoles: ["Full-stack engineer"],
     links: [
       { label: "GitHub", url: "https://github.com/you" },
       { label: "Portfolio", url: "https://you.dev" },
     ],
-    skills: ["TypeScript", "React", "Node.js"],
+    skills: [
+      { name: "TypeScript", years: 3 },
+      { name: "React", years: 3 },
+    ],
     projects: [
       {
         id: "p1",
@@ -28,8 +40,12 @@ const sampleState = {
         users: "Posted in 3 communities; 40 signups in week one.",
         links: ["https://yoursite.com"],
         tags: ["React", "Supabase"],
+        startDate: "",
+        endDate: "",
       },
     ],
+    education: [],
+    experience: [],
   },
   companies: [
     {
