@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -314,6 +314,7 @@ export function ProfileWizard({ initialProfile }: { initialProfile: EvidenceProf
               profile={profile}
               doneCount={doneCount}
               headingRef={headingRef}
+              onEdit={(index) => goTo(index)}
             />
           ) : (
             <div key={stepIndex} className="animate-step-in space-y-5">
@@ -421,21 +422,13 @@ function ReviewContent({
   profile,
   doneCount,
   headingRef,
+  onEdit,
 }: {
   profile: EvidenceProfile;
   doneCount: number;
   headingRef: RefObject<HTMLHeadingElement | null>;
+  onEdit: (index: number) => void;
 }) {
-  const hints: Record<StepId, string> = {
-    basics: "Add your name and a one-line headline.",
-    position: "GitHub is your real resume. Add it or your target roles.",
-    links: "Add at least one link an evaluator can click.",
-    skills: "List what you actually work in.",
-    projects: "The strongest signal. Add a real project with work + context + outcome.",
-    experience: "What have you shipped professionally?",
-    education: "One line in outreach, nothing more.",
-  };
-
   return (
     <div className="animate-step-in space-y-5">
       <div>
@@ -447,53 +440,284 @@ function ReviewContent({
           Review your profile
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {doneCount === STEPS.length
-            ? "Everything looks complete. Finish to save and start matching companies."
-            : `${doneCount} of ${STEPS.length} sections complete. You can finish now and improve later.`}
+          Everything you entered, in one place. Jump back to any section to fix something,
+          then finish when it feels right.
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-lg border">
-        {STEPS.map((s, i) => {
-          const done = stepDone(profile, s.id);
-          const value =
-            s.id === "basics"
-              ? profile.headline || profile.name
-              : s.id === "position"
-                ? profile.targetRoles.join(", ") || profile.githubUsername || "Not set"
-                : s.id === "links"
-                  ? profile.links.map((l) => l.label || l.url).filter(Boolean).join(", ") || "No links"
-                  : s.id === "skills"
-                    ? profile.skills.map((sk) => `${sk.name}${sk.years ? ` · ${sk.years}y` : ""}`).join(", ") || "No skills"
-                    : s.id === "projects"
-                      ? profile.projects.map((p) => p.name).filter(Boolean).join(", ") || "No projects"
-                      : s.id === "experience"
-                        ? profile.experience.map((x) => `${x.role} @ ${x.company}`).filter(Boolean).join(", ") || "No experience"
-                        : profile.education.map((e) => `${e.degree} @ ${e.school}`).filter(Boolean).join(", ") || "No education";
-          return (
-            <div
-              key={s.id}
-              className={cn(
-                "flex items-start gap-3 border-b px-4 py-3 last:border-0",
-                !done && "bg-amber-600/5"
-              )}
-            >
-              <span
-                className={cn(
-                  "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full",
-                  done ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
-                )}
-              >
-                {done ? <Check className="size-3" /> : i + 1}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{s.title}</p>
-                <p className="truncate text-sm text-muted-foreground">{done ? value : hints[s.id]}</p>
-              </div>
+      <div className="space-y-4">
+        <ReviewSection
+          index={0}
+          title="Basics"
+          done={stepDone(profile, "basics")}
+          onEdit={onEdit}
+        >
+          <ReviewGrid>
+            <ReviewRow label="Name" value={profile.name} />
+            <ReviewRow label="Headline" value={profile.headline} />
+            <ReviewRow label="About" value={profile.about} full />
+            <ReviewRow label="Email" value={profile.email} />
+            <ReviewRow label="Phone" value={profile.phone} />
+            <ReviewRow label="Location" value={profile.location} />
+            <ReviewRow label="Timezone" value={profile.timezone} />
+          </ReviewGrid>
+        </ReviewSection>
+
+        <ReviewSection
+          index={1}
+          title="Position"
+          done={stepDone(profile, "position")}
+          onEdit={onEdit}
+        >
+          <ReviewGrid>
+            <ReviewRow label="GitHub" value={profile.githubUsername} />
+            <ReviewRow label="Target roles" value={profile.targetRoles.join(", ")} />
+            <ReviewRow label="Availability" value={profile.availability} />
+            <ReviewRow
+              label="Work mode"
+              value={[
+                profile.remote ? "Remote" : "",
+                profile.openToRelocate ? "Open to relocation" : "",
+              ]
+                .filter(Boolean)
+                .join(" · ") || "Not specified"}
+            />
+          </ReviewGrid>
+        </ReviewSection>
+
+        <ReviewSection
+          index={2}
+          title="Links"
+          done={stepDone(profile, "links")}
+          onEdit={onEdit}
+        >
+          {profile.links.length === 0 ? (
+            <ReviewEmpty text="No links yet." />
+          ) : (
+            <ul className="space-y-1.5">
+              {profile.links.map((link, i) => (
+                <li key={i} className="flex items-center gap-2 text-sm">
+                  <span className="w-24 shrink-0 font-medium text-muted-foreground">
+                    {link.label || "Link"}
+                  </span>
+                  {link.url ? (
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="truncate text-primary underline underline-offset-2"
+                    >
+                      {link.url}
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground">No URL</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </ReviewSection>
+
+        <ReviewSection
+          index={3}
+          title="Skills"
+          done={stepDone(profile, "skills")}
+          onEdit={onEdit}
+        >
+          {profile.skills.length === 0 ? (
+            <ReviewEmpty text="No skills yet." />
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {profile.skills.map((skill, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs"
+                >
+                  {skill.name}
+                  {skill.years > 0 ? (
+                    <span className="text-muted-foreground">{skill.years}y</span>
+                  ) : null}
+                </span>
+              ))}
             </div>
-          );
-        })}
+          )}
+        </ReviewSection>
+
+        <ReviewSection
+          index={4}
+          title="Projects"
+          done={stepDone(profile, "projects")}
+          onEdit={onEdit}
+        >
+          {profile.projects.length === 0 ? (
+            <ReviewEmpty text="No projects yet. This is your strongest signal." />
+          ) : (
+            <div className="space-y-4">
+              {profile.projects.map((project, i) => (
+                <div key={project.id} className="rounded-lg border p-4">
+                  <p className="font-medium">{project.name || `Project ${i + 1}`}</p>
+                  <ReviewGrid className="mt-3">
+                    <ReviewRow label="Problem" value={project.problem} full />
+                    <ReviewRow label="Work" value={project.work} full />
+                    <ReviewRow label="Outcome" value={project.outcome} full />
+                    <ReviewRow label="Did anyone care?" value={project.users} full />
+                    <ReviewRow label="Links" value={project.links.join(", ")} full />
+                    <ReviewRow label="Tags" value={project.tags.join(", ")} />
+                    <ReviewRow
+                      label="Dates"
+                      value={[project.startDate, project.endDate].filter(Boolean).join(" → ")}
+                    />
+                  </ReviewGrid>
+                </div>
+              ))}
+            </div>
+          )}
+        </ReviewSection>
+
+        <ReviewSection
+          index={5}
+          title="Experience"
+          done={stepDone(profile, "experience")}
+          onEdit={onEdit}
+        >
+          {profile.experience.length === 0 ? (
+            <ReviewEmpty text="No experience yet." />
+          ) : (
+            <div className="space-y-4">
+              {profile.experience.map((exp, i) => (
+                <div key={i} className="rounded-lg border p-4">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <p className="font-medium">{exp.role || "Role"}</p>
+                    {exp.company ? (
+                      <p className="text-sm text-muted-foreground">@ {exp.company}</p>
+                    ) : null}
+                    {[exp.startDate, exp.current ? "present" : exp.endDate]
+                      .filter(Boolean)
+                      .join(" → ") ? (
+                      <p className="ml-auto text-xs text-muted-foreground">
+                        {[exp.startDate, exp.current ? "present" : exp.endDate]
+                          .filter(Boolean)
+                          .join(" → ")}
+                      </p>
+                    ) : null}
+                  </div>
+                  {exp.summary ? (
+                    <p className="mt-2 text-sm text-muted-foreground">{exp.summary}</p>
+                  ) : null}
+                  {exp.bullets.length > 0 ? (
+                    <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                      {exp.bullets.map((b, j) => (
+                        <li key={j}>{b}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </ReviewSection>
+
+        <ReviewSection
+          index={6}
+          title="Education"
+          done={stepDone(profile, "education")}
+          onEdit={onEdit}
+        >
+          {profile.education.length === 0 ? (
+            <ReviewEmpty text="No education yet." />
+          ) : (
+            <div className="space-y-4">
+              {profile.education.map((edu, i) => (
+                <div key={i} className="rounded-lg border p-4">
+                  <p className="font-medium">{edu.school || "School"}</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {[edu.degree, edu.field].filter(Boolean).join(", ")}
+                  </p>
+                  {[edu.startDate, edu.endDate].filter(Boolean).join(" → ") ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {[edu.startDate, edu.endDate].filter(Boolean).join(" → ")}
+                    </p>
+                  ) : null}
+                  {edu.notes ? (
+                    <p className="mt-2 text-sm text-muted-foreground">{edu.notes}</p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </ReviewSection>
       </div>
     </div>
   );
+}
+
+function ReviewSection({
+  index,
+  title,
+  done,
+  onEdit,
+  children,
+}: {
+  index: number;
+  title: string;
+  done: boolean;
+  onEdit: (index: number) => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border bg-card">
+      <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <span
+            className={cn(
+              "flex size-5 items-center justify-center rounded-full text-[10px] font-semibold",
+              done
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground"
+            )}
+          >
+            {done ? <Check className="size-3" /> : index + 1}
+          </span>
+          <h3 className="text-sm font-semibold">{title}</h3>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => onEdit(index)}>
+          Edit
+        </Button>
+      </header>
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
+
+function ReviewGrid({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
+  return <div className={cn("grid gap-x-6 gap-y-3 sm:grid-cols-2", className)}>{children}</div>;
+}
+
+function ReviewRow({
+  label,
+  value,
+  full,
+}: {
+  label: string;
+  value: string;
+  full?: boolean;
+}) {
+  return (
+    <div className={cn(full && "sm:col-span-2")}>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-0.5 whitespace-pre-wrap text-sm">
+        {value || <span className="text-muted-foreground">—</span>}
+      </p>
+    </div>
+  );
+}
+
+function ReviewEmpty({ text }: { text: string }) {
+  return <p className="text-sm text-muted-foreground">{text}</p>;
 }

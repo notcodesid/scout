@@ -82,7 +82,14 @@ try {
 
   // Review: 6 of 7 complete (education empty)
   const reviewText = await page.evaluate(() => document.body.innerText);
-  if (!reviewText.includes("6 of 7")) throw new Error("Review count mismatch");
+  if (!reviewText.includes("6/7")) throw new Error("Review count mismatch");
+  if (
+    !reviewText.includes("Deadline tracker for design students") ||
+    !reviewText.includes("Used by 150+ students; ~2k checks a week") ||
+    !reviewText.includes("Acme Data")
+  ) {
+    throw new Error("Review does not show full answers");
+  }
   console.log("REVIEW_OK");
 
   // Finish
