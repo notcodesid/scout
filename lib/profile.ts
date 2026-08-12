@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import type { EvidenceProfile } from "./types";
+import type { EvidenceProfile, GithubReportInfo } from "./types";
 
 const SINGLETON_ID = "me";
 
@@ -35,6 +35,7 @@ export async function getProfile(): Promise<EvidenceProfile> {
       projects: { orderBy: { sortOrder: "asc" } },
       education: { orderBy: { sortOrder: "asc" } },
       experience: { orderBy: { sortOrder: "asc" } },
+      githubReport: true,
     },
   });
 
@@ -85,6 +86,21 @@ export async function getProfile(): Promise<EvidenceProfile> {
       summary: x.summary,
       bullets: x.bullets,
     })),
+    githubReport: user.githubReport
+      ? {
+          username: user.githubReport.username,
+          fetchedAt: user.githubReport.fetchedAt.toISOString(),
+          followers: user.githubReport.followers,
+          publicRepos: user.githubReport.publicRepos,
+          totalStars: user.githubReport.totalStars,
+          score: user.githubReport.score,
+          summary: user.githubReport.summary,
+          strengths: user.githubReport.strengths,
+          redFlags: user.githubReport.redFlags,
+          topRepos: user.githubReport.topRepos,
+          activityNote: user.githubReport.activityNote,
+        } satisfies GithubReportInfo
+      : null,
     updatedAt: user.updatedAt.toISOString(),
   };
 }

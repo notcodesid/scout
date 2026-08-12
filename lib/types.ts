@@ -80,7 +80,22 @@ export interface EvidenceProfile {
   projects: Project[];
   education: ProfileEducation[];
   experience: ProfileExperience[];
+  githubReport?: GithubReportInfo | null;
   updatedAt?: string;
+}
+
+export interface GithubReportInfo {
+  username: string;
+  fetchedAt: string;
+  followers: number;
+  publicRepos: number;
+  totalStars: number;
+  score: number;
+  summary: string;
+  strengths: string[];
+  redFlags: string[];
+  topRepos: string[];
+  activityNote: string;
 }
 
 export interface Dossier {

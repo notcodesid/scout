@@ -1,5 +1,8 @@
 import { chromium } from "playwright-core";
 
+// WARNING: this test walks the whole profile wizard and OVERWRITES the current
+// profile in Postgres with test data. Run it only against a throwaway DB.
+
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const BASE = "http://127.0.0.1:3000";
 
@@ -35,23 +38,29 @@ try {
   await continueTo("Position");
 
   // 2. Position
-  await page.locator("#p-github").fill("siddharth-test");
   await page.locator("#p-roles").fill("Full-stack engineer, Frontend engineer");
+  await continueTo("GitHub");
+
+  // 3. GitHub — analyze a real public account
+  await page.locator("#p-github").fill("octocat");
+  await page.getByRole("button", { name: "Analyze GitHub" }).click();
+  await page.getByText("GitHub evidence score").first().waitFor({ timeout: 30000 });
+  console.log("GITHUB_ANALYSIS_OK");
   await continueTo("Links");
 
-  // 3. Links
+  // 4. Links
   await page.getByRole("button", { name: "Add link" }).click();
   await page.getByPlaceholder("GitHub").last().fill("GitHub");
   await page.getByPlaceholder("https://...").last().fill("https://github.com/siddharth-test");
   await continueTo("Skills");
 
-  // 4. Skills
+  // 5. Skills
   await page.getByRole("button", { name: "Add skill" }).click();
   await page.getByPlaceholder("TypeScript").last().fill("TypeScript");
   await page.getByPlaceholder("Years").last().fill("3");
   await continueTo("Projects");
 
-  // 5. Projects (proof fields)
+  // 6. Projects (proof fields)
   await page.getByRole("button", { name: "Add project" }).click();
   await page
     .getByPlaceholder("Tool that helps design students track submissions")
@@ -70,19 +79,20 @@ try {
     .fill("Posted in 3 design communities; 40 signups in week one");
   await continueTo("Experience");
 
-  // 6. Experience
+  // 7. Experience
   await page.getByRole("button", { name: "Add experience" }).click();
   await page.locator("#exp-0-company").fill("Acme Data");
   await page.locator("#exp-0-role").fill("Software Engineer");
   await page.locator("#exp-0-summary").fill("Owned the ingestion pipeline end to end.");
   await continueTo("Education");
 
-  // 7. Education — skip, continue
+  // 8. Education — skip, continue
   await continueTo("Review your profile");
 
   // Review: 6 of 7 complete (education empty)
   const reviewText = await page.evaluate(() => document.body.innerText);
-  if (!reviewText.includes("6/7")) throw new Error("Review count mismatch");
+  if (!reviewText.includes("7/8")) throw new Error("Review count mismatch");
+  if (!reviewText.includes("GitHub evidence score")) throw new Error("Review missing GitHub");
   if (
     !reviewText.includes("Deadline tracker for design students") ||
     !reviewText.includes("Used by 150+ students; ~2k checks a week") ||
@@ -110,7 +120,8 @@ try {
   if (
     apiProfile.name !== "Siddharth" ||
     apiProfile.githubUsername !== "siddharth-test" ||
-    apiProfile.projects?.length !== 1
+    apiProfile.projects?.length !== 1 ||
+    apiProfile.githubReport?.username !== "octocat"
   ) {
     throw new Error("Persistence check failed");
   }
