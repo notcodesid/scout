@@ -28,8 +28,6 @@ verdict, and at least one completed proof task. That gate *is* the product.
 - Local-first: user profile lives in Postgres (Docker), the rest is in your browser for now.
 - AI via any OpenAI-compatible provider, defaulting to Google's free Gemini tier.
 - Prisma ORM with a full user-domain schema (links, skills, projects, experience, education).
-- GitHub evidence analysis: fetches your public GitHub and scores it against the
-  article's bar (original work, context, consistency, no tutorial clones).
 
 ## Database
 
@@ -43,16 +41,6 @@ The connection string is `DATABASE_URL` in `.env` / `.env.local`
 (`postgresql://scout:scout@localhost:5433/scout`). Port 5433 avoids clashes
 with a system Postgres on 5432. `generated/` is gitignored; fresh clones run
 `npx prisma generate`.
-
-## GitHub analysis
-
-The profile wizard's GitHub step fetches public repo data from the GitHub API
-(~3 requests per analysis; 60/hour unauthenticated). To raise the limit, add a
-token to `.env.local`:
-
-```bash
-GITHUB_TOKEN=ghp_your_token
-```
 
 ## Run it
 

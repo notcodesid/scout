@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
 import {
-  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -21,7 +20,6 @@ import {
   BasicsFields,
   EducationFields,
   ExperienceFields,
-  GithubFields,
   LinksFields,
   PositioningFields,
   ProjectsFields,
@@ -38,11 +36,6 @@ const STEPS = [
     id: "position",
     title: "Position",
     description: "What you're looking for, and where.",
-  },
-  {
-    id: "github",
-    title: "GitHub",
-    description: "Your real resume — fetch and check it.",
   },
   {
     id: "links",
@@ -102,9 +95,7 @@ function stepDone(profile: EvidenceProfile, id: StepId): boolean {
     case "basics":
       return Boolean(profile.name.trim() && profile.headline.trim());
     case "position":
-      return Boolean(profile.targetRoles.length > 0);
-    case "github":
-      return Boolean(profile.githubReport);
+      return Boolean(profile.targetRoles.length > 0 || profile.githubUsername.trim());
     case "links":
       return profile.links.length > 0;
     case "skills":
@@ -402,15 +393,6 @@ function StepBody({
           }}
         />
       );
-    case "github":
-      return (
-        <GithubFields
-          username={profile.githubUsername}
-          onUsername={(v) => patch({ githubUsername: v })}
-          report={profile.githubReport}
-          onReport={(report) => patch({ githubReport: report })}
-        />
-      );
     case "links":
       return <LinksFields links={profile.links} onChange={(links) => patch({ links })} />;
     case "skills":
@@ -488,6 +470,7 @@ function ReviewContent({
           onEdit={onEdit}
         >
           <ReviewGrid>
+            <ReviewRow label="GitHub" value={profile.githubUsername} />
             <ReviewRow label="Target roles" value={profile.targetRoles.join(", ")} />
             <ReviewRow label="Availability" value={profile.availability} />
             <ReviewRow
@@ -504,71 +487,6 @@ function ReviewContent({
 
         <ReviewSection
           index={2}
-          title="GitHub"
-          done={stepDone(profile, "github")}
-          onEdit={onEdit}
-        >
-          {!profile.githubReport ? (
-            <ReviewEmpty text="No GitHub analysis yet." />
-          ) : (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-2xl font-semibold tracking-tight">
-                  {profile.githubReport.score}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  GitHub evidence score ·{" "}
-                  <a
-                    href={`https://github.com/${profile.githubReport.username}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-medium text-primary underline underline-offset-2"
-                  >
-                    @{profile.githubReport.username}
-                  </a>
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">{profile.githubReport.summary}</p>
-              {profile.githubReport.strengths.length > 0 ? (
-                <ul className="space-y-1">
-                  {profile.githubReport.strengths.map((s, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <Check className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                      {s}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {profile.githubReport.redFlags.length > 0 ? (
-                <ul className="space-y-1">
-                  {profile.githubReport.redFlags.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400">
-                      <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {profile.githubReport.topRepos.length > 0 ? (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Top repos
-                  </p>
-                  <ul className="mt-1 space-y-1">
-                    {profile.githubReport.topRepos.map((r, i) => (
-                      <li key={i} className="text-sm text-muted-foreground">
-                        {r}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </div>
-          )}
-        </ReviewSection>
-
-        <ReviewSection
-          index={3}
           title="Links"
           done={stepDone(profile, "links")}
           onEdit={onEdit}
@@ -601,7 +519,7 @@ function ReviewContent({
         </ReviewSection>
 
         <ReviewSection
-          index={4}
+          index={3}
           title="Skills"
           done={stepDone(profile, "skills")}
           onEdit={onEdit}
@@ -626,7 +544,7 @@ function ReviewContent({
         </ReviewSection>
 
         <ReviewSection
-          index={5}
+          index={4}
           title="Projects"
           done={stepDone(profile, "projects")}
           onEdit={onEdit}
@@ -657,7 +575,7 @@ function ReviewContent({
         </ReviewSection>
 
         <ReviewSection
-          index={6}
+          index={5}
           title="Experience"
           done={stepDone(profile, "experience")}
           onEdit={onEdit}
@@ -700,7 +618,7 @@ function ReviewContent({
         </ReviewSection>
 
         <ReviewSection
-          index={7}
+          index={6}
           title="Education"
           done={stepDone(profile, "education")}
           onEdit={onEdit}

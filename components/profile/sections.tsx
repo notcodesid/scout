@@ -1,15 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Link2, Loader2, Plus, Trash2 } from "lucide-react";
-import { analyzeGithubAction } from "@/app/profile/actions";
+import { Link2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type {
   EvidenceProfile,
-  GithubReportInfo,
   ProfileEducation,
   ProfileExperience,
   ProfileLink,
@@ -131,6 +128,19 @@ export function PositioningFields({
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Field
+        label="GitHub username"
+        htmlFor="p-github"
+        hint="Your GitHub is your real resume."
+      >
+        <Input
+          id="p-github"
+          value={profile.githubUsername}
+          onChange={(e) => patch({ githubUsername: e.target.value })}
+          placeholder="your-github-handle"
+          autoComplete="off"
+        />
+      </Field>
+      <Field
         label="Availability" htmlFor="p-availability">
         <select
           id="p-availability"
@@ -176,161 +186,6 @@ export function PositioningFields({
           <span className="text-sm">Open to relocating</span>
         </label>
       </div>
-    </div>
-  );
-}
-
-export function GithubFields({
-  username,
-  onUsername,
-  report,
-  onReport,
-}: {
-  username: string;
-  onUsername: (value: string) => void;
-  report: GithubReportInfo | null | undefined;
-  onReport: (report: GithubReportInfo) => void;
-}) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  async function run() {
-    if (!username.trim()) {
-      setError("Enter a GitHub username first.");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const result = await analyzeGithubAction(username.trim());
-      onReport(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "GitHub analysis failed.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <div className="flex-1">
-          <Field label="GitHub username" htmlFor="p-github">
-            <Input
-              id="p-github"
-              value={username}
-              onChange={(e) => onUsername(e.target.value)}
-              placeholder="your-github-handle"
-              autoComplete="off"
-            />
-          </Field>
-        </div>
-        <Button
-          onClick={run}
-          disabled={loading}
-          className="sm:mt-6"
-        >
-          {loading ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
-          {loading ? "Analyzing..." : report ? "Re-analyze" : "Analyze GitHub"}
-        </Button>
-      </div>
-
-      {error ? (
-        <p className="rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
-
-      {!loading && report ? (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-3xl font-semibold tracking-tight">{report.score}</span>
-            <span className="text-sm text-muted-foreground">
-              GitHub evidence score ·{" "}
-              <span className="font-medium text-foreground">@{report.username}</span>
-            </span>
-            <span className="text-xs text-muted-foreground">
-              Fetched {new Date(report.fetchedAt).toLocaleDateString()}
-            </span>
-          </div>
-
-          <p className="text-sm text-muted-foreground">{report.summary}</p>
-
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <Stat label="Repos" value={report.publicRepos} />
-            <Stat label="Stars" value={report.totalStars} />
-            <Stat label="Followers" value={report.followers} />
-          </div>
-
-          {report.strengths.length > 0 ? (
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                What's working
-              </p>
-              <ul className="mt-2 space-y-1.5">
-                {report.strengths.map((s, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    {s}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {report.redFlags.length > 0 ? (
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Red flags
-              </p>
-              <ul className="mt-2 space-y-1.5">
-                {report.redFlags.map((f, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {report.topRepos.length > 0 ? (
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Top repos
-              </p>
-              <ul className="mt-2 space-y-1.5">
-                {report.topRepos.map((r, i) => (
-                  <li key={i} className="text-sm text-muted-foreground">
-                    {r}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {report.activityNote ? (
-            <p className="text-xs text-muted-foreground">{report.activityNote}</p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {!loading && !report ? (
-        <p className="text-sm text-muted-foreground">
-          Fetches your public repos, stars, activity, and README-quality signals, then checks
-          them against the article's bar: real original work, context, consistency, and no
-          tutorial clones or LeetCode dumps.
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-md border p-2">
-      <p className="text-lg font-semibold">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
     </div>
   );
 }

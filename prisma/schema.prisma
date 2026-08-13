@@ -30,25 +30,6 @@ model User {
   projects       Project[]
   education      Education[]
   experience     Experience[]
-  githubReport   GithubReport?
-}
-
-// Fetched-and-analyzed GitHub evidence: "your GitHub is your real resume."
-model GithubReport {
-  id            String   @id @default(uuid())
-  userId        String   @unique
-  username      String
-  fetchedAt     DateTime @default(now())
-  followers     Int      @default(0)
-  publicRepos   Int      @default(0)
-  totalStars    Int      @default(0)
-  score         Int      @default(0)
-  summary       String   @default("")
-  strengths     String[] @default([])
-  redFlags      String[] @default([])
-  topRepos      String[] @default([])
-  activityNote  String   @default("")
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // Resume, GitHub, portfolio, LinkedIn, X — anything an evaluator can click.
