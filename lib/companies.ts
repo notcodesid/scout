@@ -8,6 +8,8 @@ import type {
   ProofTask,
   QualityFlag,
   QualityReport,
+  ResearchMaterial,
+  ResearchSource,
 } from "./types";
 
 function asString(value: unknown): string {
@@ -100,6 +102,44 @@ function normalizeQuality(value: unknown): QualityReport | undefined {
   };
 }
 
+function normalizeResearch(value: unknown): ResearchMaterial | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const r = value as Partial<ResearchMaterial>;
+  const rawSources = Array.isArray(r.sources) ? (r.sources as ResearchSource[]) : [];
+  return {
+    companyName: asString(r.companyName),
+    websiteUrl: asString(r.websiteUrl),
+    jobUrl: asString(r.jobUrl),
+    websiteText: asString(r.websiteText),
+    jobText: asString(r.jobText),
+    searchResults: Array.isArray(r.searchResults)
+      ? r.searchResults.map((s) => ({
+          url: asString(s?.url),
+          title: asString(s?.title),
+          snippet: asString(s?.snippet),
+          publishedDate: s?.publishedDate ? asString(s.publishedDate) : undefined,
+          author: s?.author ? asString(s.author) : undefined,
+        }))
+      : [],
+    sources: rawSources.map((s) => ({
+      url: asString(s?.url),
+      title: asString(s?.title),
+      kind:
+        s?.kind === "website" || s?.kind === "job" || s?.kind === "search"
+          ? s.kind
+          : "search",
+      status:
+        s?.status === "ok" || s?.status === "error" || s?.status === "skipped"
+          ? s.status
+          : "error",
+      detail: s?.detail ? asString(s.detail) : undefined,
+      excerpt: s?.excerpt ? asString(s.excerpt) : undefined,
+    })),
+    generatedAt:
+      typeof r.generatedAt === "number" ? r.generatedAt : Date.now(),
+  };
+}
+
 function stageFor(company: {
   dossier?: unknown;
   fit?: unknown;
@@ -132,6 +172,7 @@ function mapCompany(row: NonNullable<CompanyRow>): Company {
     fit: normalizeFit(row.fit),
     outreach: normalizeOutreach(row.outreach),
     quality: normalizeQuality(row.quality),
+    research: normalizeResearch(row.research),
     proofTasks: row.proofTasks
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((t) => ({
@@ -201,6 +242,18 @@ export async function setArtifact(
   const row = await prisma.company.update({
     where: { id },
     data: { [kind]: value as object },
+    include,
+  });
+  return mapCompany(row);
+}
+
+export async function setResearch(
+  id: string,
+  value: ResearchMaterial
+): Promise<Company | null> {
+  const row = await prisma.company.update({
+    where: { id },
+    data: { research: value as object },
     include,
   });
   return mapCompany(row);

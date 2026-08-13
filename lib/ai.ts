@@ -8,6 +8,7 @@ import type {
   ProofTask,
   QualityFlag,
   QualityReport,
+  ResearchMaterial,
 } from "./types";
 import {
   dossierUser,
@@ -275,11 +276,15 @@ export function hasAIKey(): boolean {
 // ---- Fallbacks (used when no AI key is configured) ------------------------
 
 function dossierFallback(
-  company: Pick<Company, "url" | "jobUrl" | "notes">
+  company: Pick<Company, "url" | "jobUrl" | "notes">,
+  material?: ResearchMaterial
 ): Partial<Dossier> {
   const host = hostFromUrl(company.url);
+  const sources = material?.sources.length
+    ? material.sources.map((s) => s.url)
+    : [company.url, company.jobUrl].filter(Boolean);
   return {
-    companyName: host.charAt(0).toUpperCase() + host.slice(1),
+    companyName: material?.companyName || host.charAt(0).toUpperCase() + host.slice(1),
     oneLiner: "Sample: what this company does, in one sentence.",
     problem: "Sample: the real problem they solve and for whom.",
     users: "Sample: who uses it and why.",
@@ -291,7 +296,7 @@ function dossierFallback(
       "Sample [inferred]: turning user feedback into product direction",
     ],
     competitors: [],
-    sources: [company.url, company.jobUrl].filter(Boolean),
+    sources,
     openQuestions: [
       "Sample: What did you notice when you actually used the product?",
       "Sample: Who is one team member you could reach directly?",
@@ -422,6 +427,7 @@ export function buildDossier(opts: {
   company: Pick<Company, "url" | "jobUrl" | "notes">;
   profile: EvidenceProfile;
   config?: AIConfig;
+  material?: ResearchMaterial;
 }): Promise<AIResult<Dossier>> {
   return generateJSON<Partial<Dossier>>({
     system: DOSSIER_SYSTEM,
@@ -430,9 +436,10 @@ export function buildDossier(opts: {
       jobUrl: opts.company.jobUrl,
       notes: opts.company.notes,
       profile: opts.profile,
+      material: opts.material,
     }),
     config: opts.config,
-    fallback: () => dossierFallback(opts.company),
+    fallback: () => dossierFallback(opts.company, opts.material),
   }).then((res) => ({ data: normalizeDossier(res.data), mock: res.mock }));
 }
 
@@ -512,6 +519,7 @@ export function checkQuality(opts: {
 export async function buildDossierServer(opts: {
   company: Pick<Company, "url" | "jobUrl" | "notes">;
   profile: EvidenceProfile;
+  material?: ResearchMaterial;
 }): Promise<Dossier> {
   return normalizeDossier(
     await generateJSONServer<Partial<Dossier>>({
@@ -521,8 +529,9 @@ export async function buildDossierServer(opts: {
         jobUrl: opts.company.jobUrl,
         notes: opts.company.notes,
         profile: opts.profile,
+        material: opts.material,
       }),
-      fallback: () => dossierFallback(opts.company),
+      fallback: () => dossierFallback(opts.company, opts.material),
     })
   );
 }

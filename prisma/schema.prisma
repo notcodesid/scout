@@ -122,6 +122,7 @@ model Company {
   fit          Json?
   outreach     Json?
   quality      Json?
+  research     Json?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   proofTasks   ProofTask[]

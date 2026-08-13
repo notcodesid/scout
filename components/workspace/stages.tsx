@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ClipboardCheck,
+  Compass,
+  ExternalLink,
   FileSearch,
   Loader2,
   PenLine,
@@ -17,6 +19,7 @@ import {
   buildDossierAction,
   checkQualityAction,
   draftOutreachAction,
+  researchCompanyAction,
   saveArtifactAction,
   saveProofTasksAction,
   suggestProofTasksAction,
@@ -35,6 +38,9 @@ import type {
   OutreachPack,
   ProofTask,
   QualityReport,
+  ResearchMaterial,
+  ResearchSource,
+  ResearchStep,
 } from "@/lib/types";
 import { words } from "@/lib/utils";
 
@@ -125,8 +131,35 @@ export function ResearchStage({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [researchError, setResearchError] = useState("");
   const [mock, setMock] = useState(false);
+  const [researching, setResearching] = useState(false);
+  const [building, setBuilding] = useState(false);
+  const [steps, setSteps] = useState<ResearchStep[] | undefined>();
+  const [stageIndex, setStageIndex] = useState(0);
   const [draft, setDraft] = useState<Dossier | undefined>(company.dossier);
+  const [research, setResearch] = useState<ResearchMaterial | undefined>(
+    company.research
+  );
+
+  const researchStages = [
+    "Fetching website…",
+    "Fetching job post…",
+    "Searching for team & funding…",
+    "Reading sources…",
+    "Writing the brief…",
+  ];
+
+  useEffect(() => {
+    if (!researching) {
+      setStageIndex(0);
+      return;
+    }
+    const t = setInterval(() => {
+      setStageIndex((i) => (i + 1) % researchStages.length);
+    }, 1400);
+    return () => clearInterval(t);
+  }, [researching]);
 
   useDraft(draft, (d) => {
     if (d) {
@@ -144,6 +177,7 @@ export function ResearchStage({
       if (res.company) {
         setCompany(res.company);
         setDraft(res.company.dossier);
+        setResearch(res.company.research);
       }
       setMock(res.mock);
     } catch (err) {
@@ -153,6 +187,30 @@ export function ResearchStage({
     }
   }
 
+  async function researchCompany() {
+    setResearching(true);
+    setResearchError("");
+    setSteps(undefined);
+    try {
+      const res = await researchCompanyAction(company.id);
+      if (res.company) {
+        setCompany(res.company);
+        setDraft(res.company.dossier);
+        setResearch(res.company.research);
+      }
+      setSteps(res.steps);
+      setMock(res.mock);
+    } catch (err) {
+      setResearchError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setResearching(false);
+    }
+  }
+
+  const canResearch = Boolean(
+    company.name.trim() || company.url.trim() || company.jobUrl.trim()
+  );
+
   function patchDossier(patch: Partial<Dossier>) {
     setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
   }
@@ -160,20 +218,91 @@ export function ResearchStage({
   return (
     <div>
       <StageHeader
-        icon={<FileSearch className="size-5" />}
+        icon={<Compass className="size-5" />}
         title="Research dossier"
-        description="Turn what you pasted into a tight brief. Every claim should be sourced, and you verify before moving on."
+        description="Fetch the site, the job post, and search the web for context — then turn it into a tight, sourced brief. You verify before moving on."
         action={
-          <Button onClick={run} disabled={loading}>
-            {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
-            {loading ? "Building..." : draft ? "Rebuild dossier" : "Build dossier"}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {research && !draft && !researching ? (
+              <Button variant="outline" onClick={run} disabled={loading}>
+                {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                {loading ? "Building..." : "Build brief"}
+              </Button>
+            ) : null}
+            <Button
+              onClick={researchCompany}
+              disabled={researching || loading || !canResearch}
+              title={
+                !canResearch
+                  ? "Add a company URL or job post first"
+                  : undefined
+              }
+            >
+              {researching ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <FileSearch />
+              )}
+              {researching
+                ? researchStages[stageIndex]
+                : research
+                  ? "Research again"
+                  : "Research company"}
+            </Button>
+          </div>
         }
         mock={mock}
       />
 
       {error ? <AIError message={error} onRetry={run} /> : null}
+      {researchError ? (
+        <div className="rounded-md border border-destructive/50 bg-destructive/5 p-4 text-sm">
+          <p className="flex items-center gap-2 font-medium text-destructive">
+            <AlertTriangle className="size-4" /> Research failed
+          </p>
+          <p className="mt-1 text-muted-foreground">{researchError}</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            You can still add notes manually and build a brief from what you
+            pasted.
+          </p>
+        </div>
+      ) : null}
+
+      {researching ? (
+        <div className="rounded-lg border bg-card p-6">
+          <div className="flex items-center gap-3">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">
+                {researchStages[stageIndex]}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Fetching real pages and searching the web. Usually 20–60
+                seconds.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-1.5">
+            {researchStages.map((label, i) => (
+              <div
+                key={label}
+                className={
+                  i === stageIndex ? "text-xs text-foreground" : "text-xs text-muted-foreground/60"
+                }
+              >
+                {i < stageIndex ? "✓ " : "· "}
+                {label}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {loading ? <LoadingBlock /> : null}
+
+      {research && !researching && !loading ? (
+        <ResearchSourcesPanel research={research} steps={steps} />
+      ) : null}
 
       {!loading && draft ? (
         <div className="space-y-4">
@@ -286,8 +415,102 @@ export function ResearchStage({
 
       {!loading && !draft ? (
         <p className="text-sm text-muted-foreground">
-          Add the company URL and job post in the pipeline, then build the dossier here. Without a
-          configured AI key you'll get sample output so you can try the flow.
+          Add the company URL and job post, then hit Research company. Scout
+          fetches the real pages, searches the web for context, and builds a
+          brief with sources you can verify.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function ResearchSourcesPanel({
+  research,
+  steps,
+}: {
+  research: ResearchMaterial;
+  steps?: ResearchStep[];
+}) {
+  const okCount = research.sources.filter((s) => s.status === "ok").length;
+  const failed = research.sources.filter((s) => s.status !== "ok");
+  return (
+    <div className="mb-5 rounded-lg border bg-card p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-sm font-medium">
+          <FileSearch className="size-4 text-muted-foreground" />
+          What the AI read
+        </p>
+        <Badge variant="secondary">
+          {okCount}/{research.sources.length} sources fetched
+        </Badge>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Every claim in the brief should trace back to one of these. Open the
+        ones you haven't seen before marking research verified.
+      </p>
+      {steps && steps.length > 0 ? (
+        <div className="mt-3 space-y-1">
+          {steps.map((step) => (
+            <p key={step.key} className="text-xs text-muted-foreground">
+              {step.status === "ok"
+                ? "✓"
+                : step.status === "skipped"
+                  ? "−"
+                  : "✕"}{" "}
+              {step.label}
+              {step.detail ? ` — ${step.detail}` : ""}
+            </p>
+          ))}
+        </div>
+      ) : null}
+      <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+        {research.sources.map((source) => (
+          <SourceRow key={source.url} source={source} />
+        ))}
+      </div>
+      {failed.length > 0 ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Sources marked failed weren't reachable from here (some sites block
+          fetchers). Verify them manually before relying on the brief.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function SourceRow({ source }: { source: ResearchSource }) {
+  const variant =
+    source.status === "ok"
+      ? "success"
+      : source.status === "skipped"
+        ? "secondary"
+        : "destructive";
+  const label =
+    source.status === "ok"
+      ? "fetched"
+      : source.status === "skipped"
+        ? "skipped"
+        : "failed";
+  return (
+    <div className="rounded-md border bg-background p-3">
+      <div className="flex items-start justify-between gap-2">
+        <a
+          href={source.url}
+          target="_blank"
+          rel="noreferrer"
+          className="line-clamp-2 min-w-0 text-sm font-medium hover:underline"
+        >
+          <ExternalLink className="mr-1 inline size-3.5 text-muted-foreground" />
+          {source.title || source.url}
+        </a>
+        <Badge variant={variant as "success" | "secondary" | "destructive"}>
+          {label}
+        </Badge>
+      </div>
+      <p className="mt-1 truncate text-xs text-muted-foreground">{source.url}</p>
+      {source.excerpt ? (
+        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+          {source.excerpt}
         </p>
       ) : null}
     </div>
@@ -630,7 +853,7 @@ export function OutreachStage({
   useDraft(contactsText, (value) => {
     updateCompanyAction(company.id, {
       contacts: value
-        .split(",")
+        .split(/[,\n]/)
         .map((s) => s.trim())
         .filter(Boolean),
     })
@@ -680,16 +903,18 @@ export function OutreachStage({
       {loading ? <LoadingBlock /> : null}
 
       <Field
-        label="Contacts (comma separated)"
+        label="Contacts"
         htmlFor="o-contacts"
-        hint="Founder, hiring manager, engineer you found during research. Expand your surface area: email, LinkedIn, and X."
+        hint="One per line or comma separated. Founder, hiring manager, engineer you found during research — email, LinkedIn, X, all of it."
         className="mb-4"
       >
-        <Input
+        <Textarea
           id="o-contacts"
+          rows={5}
+          className="resize-none"
           value={contactsText}
           onChange={(e) => setContactsText(e.target.value)}
-          placeholder="Ada Lovelace, aida@company.com, @handle"
+          placeholder={"Ada Lovelace, aida@company.com, @handle\nKai Chen, kai@company.com"}
         />
       </Field>
 

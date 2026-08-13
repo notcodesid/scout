@@ -6,14 +6,16 @@ import type {
   OutreachPack,
   ProofTask,
   QualityReport,
+  ResearchMaterial,
 } from "./types";
 
 export const DOSSIER_SYSTEM = `You are a startup research analyst for Scout, a job-application copilot.
-Your job: turn what the candidate pasted (company URL, job post, notes) into a tight, sourced research dossier.
+Your job: turn the fetched research material (website content, job post, web search results, notes) into a tight, sourced research dossier.
 Rules:
+- Use ONLY the provided material. Do not fall back to prior knowledge or guess.
 - Never invent facts. If something is unknown or unverifiable, write "Unknown" or "Not in provided material".
 - Be specific. Vague praise is useless.
-- Sources: list every URL the user provided, plus any concrete source you can cite from the material.
+- Sources: list the exact URLs from the provided material that you actually used.
 - Team: only list people you can name from the material. Never guess names.
 - Likely needs: infer what the company probably needs help with, based only on provided material. Mark inference clearly.
 Respond with a single JSON object only. No markdown, no commentary.`;
@@ -23,7 +25,18 @@ export function dossierUser(input: {
   jobUrl: string;
   notes: string;
   profile: EvidenceProfile;
+  material?: ResearchMaterial;
 }): string {
+  const material = input.material;
+  const searchBlock = material?.searchResults.length
+    ? material.searchResults
+        .map(
+          (r, i) =>
+            `${i + 1}. ${r.title} — ${r.url}\n   ${r.snippet || "(no snippet)"}`
+        )
+        .join("\n")
+    : "No search results available.";
+
   return `Candidate profile (for context only, do not include in the dossier):
 ${JSON.stringify(input.profile, null, 2)}
 
@@ -31,6 +44,20 @@ Company URL: ${input.companyUrl || "not provided"}
 Job post URL: ${input.jobUrl || "not provided"}
 Candidate notes / material:
 ${input.notes || "not provided"}
+
+=== FETCHED WEBSITE CONTENT ===
+${material?.websiteText || "Website was not fetched or is unavailable."}
+
+=== FETCHED JOB POST CONTENT ===
+${material?.jobText || "Job post was not fetched or is unavailable."}
+
+=== WEB SEARCH RESULTS ===
+${searchBlock}
+
+=== INSTRUCTIONS ===
+Base every field on the fetched material above. Cite only URLs that appear in
+the material. When a field cannot be answered from the material, write "Unknown"
+or "Not in provided material". Mark anything you infer as [inferred].
 
 Return JSON with exactly these fields:
 {

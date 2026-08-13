@@ -161,7 +161,45 @@ export interface Company {
   proofTasks: ProofTask[];
   outreach?: OutreachPack;
   quality?: QualityReport;
+  research?: ResearchMaterial;
   followUpDate: string;
+}
+
+export type ResearchSourceKind = "website" | "job" | "search";
+
+export interface ResearchSource {
+  url: string;
+  title: string;
+  kind: ResearchSourceKind;
+  status: "ok" | "error" | "skipped";
+  detail?: string;
+  excerpt?: string;
+}
+
+export interface ResearchSearchResult {
+  url: string;
+  title: string;
+  snippet: string;
+  publishedDate?: string;
+  author?: string;
+}
+
+export interface ResearchMaterial {
+  companyName: string;
+  websiteUrl: string;
+  jobUrl: string;
+  websiteText: string;
+  jobText: string;
+  searchResults: ResearchSearchResult[];
+  sources: ResearchSource[];
+  generatedAt: number;
+}
+
+export interface ResearchStep {
+  key: string;
+  label: string;
+  status: "ok" | "skipped" | "error";
+  detail?: string;
 }
 
 export interface AIConfig {

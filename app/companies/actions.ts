@@ -15,10 +15,12 @@ import {
   getCompany,
   replaceProofTasks,
   setArtifact,
+  setResearch,
   updateCompanyScalars,
 } from "@/lib/companies";
 import { getProfile } from "@/lib/profile";
-import type { Company, ProofTask } from "@/lib/types";
+import { runCompanyResearch } from "@/lib/research";
+import type { Company, ProofTask, ResearchStep } from "@/lib/types";
 
 async function requireCompany(id: string): Promise<Company> {
   const company = await getCompany(id);
@@ -76,10 +78,44 @@ export async function saveProofTasksAction(
 export async function buildDossierAction(id: string) {
   const company = await requireCompany(id);
   const profile = await getProfile();
-  const dossier = await buildDossierServer({ company, profile });
+  const dossier = await buildDossierServer({
+    company,
+    profile,
+    material: company.research,
+  });
   const updated = await setArtifact(id, "dossier", dossier);
   revalidatePath(`/companies/${id}`);
   return { company: updated, mock: !hasAIKey() };
+}
+
+export async function researchCompanyAction(id: string) {
+  const company = await requireCompany(id);
+  const { material, steps } = await runCompanyResearch({
+    name: company.name,
+    url: company.url,
+    jobUrl: company.jobUrl,
+    notes: company.notes,
+  });
+
+  const fetchedSomething =
+    material.websiteText || material.jobText || material.searchResults.length > 0;
+  if (!fetchedSomething) {
+    const detail = steps.find((s) => s.status === "error")?.detail || "";
+    throw new Error(
+      `Couldn't fetch anything about ${material.companyName}. Add the company URL or job post, or check the research providers.${detail ? ` (${detail})` : ""}`
+    );
+  }
+
+  await setResearch(id, material);
+  const profile = await getProfile();
+  const dossier = await buildDossierServer({
+    company,
+    profile,
+    material,
+  });
+  const updated = await setArtifact(id, "dossier", dossier);
+  revalidatePath(`/companies/${id}`);
+  return { company: updated, steps, mock: !hasAIKey() };
 }
 
 export async function analyzeFitAction(id: string) {
