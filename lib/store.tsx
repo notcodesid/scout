@@ -13,11 +13,8 @@ import {
 import type {
   AIConfig,
   AppState,
-  Company,
   EvidenceProfile,
   Project,
-  ProofTask,
-  Stage,
 } from "./types";
 import { uid } from "./utils";
 
@@ -47,7 +44,7 @@ const emptyProfile: EvidenceProfile = {
 const emptyAI: AIConfig = { baseUrl: "", model: "", apiKey: "" };
 
 function defaultState(): AppState {
-  return { profile: emptyProfile, companies: [], ai: emptyAI };
+  return { profile: emptyProfile, ai: emptyAI };
 }
 
 function loadState(): AppState {
@@ -58,7 +55,6 @@ function loadState(): AppState {
     const parsed = JSON.parse(raw) as Partial<AppState>;
     return {
       profile: { ...emptyProfile, ...(parsed.profile ?? {}) },
-      companies: parsed.companies ?? [],
       ai: { ...emptyAI, ...(parsed.ai ?? {}) },
     };
   } catch {
@@ -72,20 +68,7 @@ interface ScoutContextValue {
   addProject: (project: Omit<Project, "id">) => void;
   updateProject: (id: string, patch: Partial<Project>) => void;
   deleteProject: (id: string) => void;
-  addCompany: (
-    company: Omit<
-      Company,
-      "id" | "createdAt" | "updatedAt" | "stage" | "proofTasks" | "followUpDate"
-    >
-  ) => void;
-  updateCompany: (id: string, patch: Partial<Company>) => void;
-  deleteCompany: (id: string) => void;
-  setCompanyStage: (id: string, stage: Stage) => void;
-  addProofTask: (companyId: string, task: Omit<ProofTask, "id">) => void;
-  updateProofTask: (companyId: string, taskId: string, patch: Partial<ProofTask>) => void;
-  deleteProofTask: (companyId: string, taskId: string) => void;
   setAI: (patch: Partial<AIConfig>) => void;
-  loadSample: () => void;
   resetAll: () => void;
 }
 
@@ -148,170 +131,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const addCompany = useCallback(
-    (
-      company: Omit<
-        Company,
-        "id" | "createdAt" | "updatedAt" | "stage" | "proofTasks" | "followUpDate"
-      >
-    ) => {
-      setState((s) => ({
-        ...s,
-        companies: [
-          {
-            ...company,
-            id: uid(),
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            stage: "research",
-            proofTasks: [],
-            followUpDate: "",
-          },
-          ...s.companies,
-        ],
-      }));
-    },
-    []
-  );
-
-  const updateCompany = useCallback((id: string, patch: Partial<Company>) => {
-    setState((s) => ({
-      ...s,
-      companies: s.companies.map((c) =>
-        c.id === id ? { ...c, ...patch, updatedAt: Date.now() } : c
-      ),
-    }));
-  }, []);
-
-  const deleteCompany = useCallback((id: string) => {
-    setState((s) => ({ ...s, companies: s.companies.filter((c) => c.id !== id) }));
-  }, []);
-
-  const setCompanyStage = useCallback(
-    (id: string, stage: Stage) => {
-      setState((s) => ({
-        ...s,
-        companies: s.companies.map((c) =>
-          c.id === id ? { ...c, stage, updatedAt: Date.now() } : c
-        ),
-      }));
-    },
-    []
-  );
-
-  const addProofTask = useCallback(
-    (companyId: string, task: Omit<ProofTask, "id">) => {
-      setState((s) => ({
-        ...s,
-        companies: s.companies.map((c) =>
-          c.id === companyId
-            ? { ...c, proofTasks: [...c.proofTasks, { ...task, id: uid() }] }
-            : c
-        ),
-      }));
-    },
-    []
-  );
-
-  const updateProofTask = useCallback(
-    (companyId: string, taskId: string, patch: Partial<ProofTask>) => {
-      setState((s) => ({
-        ...s,
-        companies: s.companies.map((c) =>
-          c.id === companyId
-            ? {
-                ...c,
-                proofTasks: c.proofTasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)),
-              }
-            : c
-        ),
-      }));
-    },
-    []
-  );
-
-  const deleteProofTask = useCallback(
-    (companyId: string, taskId: string) => {
-      setState((s) => ({
-        ...s,
-        companies: s.companies.map((c) =>
-          c.id === companyId
-            ? { ...c, proofTasks: c.proofTasks.filter((t) => t.id !== taskId) }
-            : c
-        ),
-      }));
-    },
-    []
-  );
-
   const setAI = useCallback((patch: Partial<AIConfig>) => {
     setState((s) => ({ ...s, ai: { ...s.ai, ...patch } }));
   }, []);
-
-  const loadSample = useCallback(() => {
-    const sample: AppState = {
-      profile: {
-        id: undefined,
-        name: "Your Name",
-        headline: "Full-stack developer building for real users",
-        about: "",
-        location: "India",
-        email: "you@example.com",
-        phone: "",
-        timezone: "",
-        githubUsername: "you",
-        availability: "immediately",
-        remote: true,
-        openToRelocate: false,
-        targetRoles: ["Full-stack engineer", "Frontend engineer"],
-        links: [
-          { label: "GitHub", url: "https://github.com/you" },
-          { label: "Portfolio", url: "https://you.dev" },
-        ],
-        skills: [
-          { name: "TypeScript", years: 3 },
-          { name: "React", years: 3 },
-          { name: "Node.js", years: 2 },
-          { name: "Postgres", years: 2 },
-        ],
-        projects: [
-          {
-            id: uid(),
-            name: "Submission tracker for design students",
-            problem:
-              "Design students track deadlines across 5+ platforms and miss submissions.",
-            work: "Built a tool that aggregates deadlines from 5 platforms into one view with reminders.",
-            outcome: "Used by 150+ students; processes ~2k deadline checks a week.",
-            users:
-              "Posted in 3 design communities; ~40 signups in the first week, 15 stayed active.",
-            links: ["https://yoursite.com"],
-            tags: ["React", "Supabase"],
-            startDate: "",
-            endDate: "",
-          },
-        ],
-        education: [],
-        experience: [],
-      },
-      companies: [
-        {
-          id: uid(),
-          name: "Sample Startup",
-          url: "https://samplestartup.com",
-          jobUrl: "",
-          notes: "Paste the job post here. This is sample data so you can try the flow.",
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          stage: "research",
-          contacts: [],
-          proofTasks: [],
-          followUpDate: "",
-        },
-      ],
-      ai: { ...state.ai },
-    };
-    setState(sample);
-  }, [state.ai]);
 
   const resetAll = useCallback(() => {
     setState(defaultState());
@@ -324,15 +146,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addProject,
       updateProject,
       deleteProject,
-      addCompany,
-      updateCompany,
-      deleteCompany,
-      setCompanyStage,
-      addProofTask,
-      updateProofTask,
-      deleteProofTask,
       setAI,
-      loadSample,
       resetAll,
     }),
     [
@@ -341,15 +155,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addProject,
       updateProject,
       deleteProject,
-      addCompany,
-      updateCompany,
-      deleteCompany,
-      setCompanyStage,
-      addProofTask,
-      updateProofTask,
-      deleteProofTask,
       setAI,
-      loadSample,
       resetAll,
     ]
   );

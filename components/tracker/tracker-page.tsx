@@ -1,18 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Info } from "lucide-react";
+import { updateCompanyAction } from "@/app/companies/actions";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
-import { useScout } from "@/lib/store";
+import type { Company } from "@/lib/types";
 import { STAGE_LABELS } from "@/lib/types";
 import { timeAgo } from "@/lib/utils";
 
-export function TrackerPage() {
-  const { state, updateCompany } = useScout();
+export function TrackerPage({ companies }: { companies: Company[] }) {
+  const [dates, setDates] = useState<Record<string, string>>(() =>
+    Object.fromEntries(companies.map((c) => [c.id, c.followUpDate]))
+  );
 
-  if (state.companies.length === 0) {
+  if (companies.length === 0) {
     return (
       <EmptyState
         title="Nothing to track yet"
@@ -52,7 +56,7 @@ export function TrackerPage() {
             </tr>
           </thead>
           <tbody>
-            {state.companies.map((company) => {
+            {companies.map((company) => {
               const doneTasks = company.proofTasks.filter((t) => t.done).length;
               const strong =
                 Boolean(company.quality) &&
@@ -112,8 +116,12 @@ export function TrackerPage() {
                     <Input
                       type="date"
                       aria-label={`Follow-up date for ${company.name}`}
-                      value={company.followUpDate}
-                      onChange={(e) => updateCompany(company.id, { followUpDate: e.target.value })}
+                      value={dates[company.id] ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setDates((prev) => ({ ...prev, [company.id]: value }));
+                        updateCompanyAction(company.id, { followUpDate: value }).catch(() => {});
+                      }}
                       className="h-8 w-40"
                     />
                   </td>

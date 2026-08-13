@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, ExternalLink } from "lucide-react";
+import { deleteCompanyAction } from "@/app/companies/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { useScout } from "@/lib/store";
 import { STAGE_LABELS, STAGE_ORDER, type Company, type Stage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -66,25 +67,16 @@ function lockReason(company: Company, stage: Stage): string {
   }
 }
 
-export function CompanyWorkspace({ companyId }: { companyId: string }) {
-  const { state, deleteCompany } = useScout();
-  const company = state.companies.find((c) => c.id === companyId);
+export function CompanyWorkspace({ initialCompany }: { initialCompany: Company }) {
+  const router = useRouter();
+  const [company, setCompany] = useState<Company>(initialCompany);
   const [active, setActive] = useState<Stage>(() =>
-    STAGE_ORDER.find((s) => company && !stageDone(company, s)) ?? "quality"
+    STAGE_ORDER.find((s) => !stageDone(initialCompany, s)) ?? "quality"
   );
 
-  if (!company) {
-    return (
-      <EmptyState
-        title="Company not found"
-        description="It may have been removed."
-        action={
-          <Link href="/" className={buttonVariants({ variant: "outline" })}>
-            Back to pipeline
-          </Link>
-        }
-      />
-    );
+  async function remove() {
+    await deleteCompanyAction(company.id);
+    router.push("/");
   }
 
   return (
@@ -122,7 +114,7 @@ export function CompanyWorkspace({ companyId }: { companyId: string }) {
             variant="ghost"
             size="sm"
             className="ml-auto text-muted-foreground"
-            onClick={() => deleteCompany(company.id)}
+            onClick={remove}
           >
             Delete
           </Button>
@@ -132,7 +124,11 @@ export function CompanyWorkspace({ companyId }: { companyId: string }) {
         ) : null}
       </div>
 
-      <div className="flex gap-1 overflow-x-auto rounded-lg border bg-card p-1" role="tablist" aria-label="Pipeline stages">
+      <div
+        className="flex gap-1 overflow-x-auto rounded-lg border bg-card p-1"
+        role="tablist"
+        aria-label="Pipeline stages"
+      >
         {STAGE_ORDER.map((stage, i) => {
           const done = stageDone(company, stage);
           const unlocked = stageUnlocked(company, stage);
@@ -156,12 +152,16 @@ export function CompanyWorkspace({ companyId }: { companyId: string }) {
               <span
                 className={cn(
                   "flex size-5 items-center justify-center rounded-full text-[10px] font-semibold",
-                  done ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
+                  done
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground"
                 )}
               >
                 {done ? "✓" : i + 1}
               </span>
-              <span className="hidden whitespace-nowrap sm:inline">{STAGE_LABELS[stage]}</span>
+              <span className="hidden whitespace-nowrap sm:inline">
+                {STAGE_LABELS[stage]}
+              </span>
             </button>
           );
         })}
@@ -169,15 +169,15 @@ export function CompanyWorkspace({ companyId }: { companyId: string }) {
 
       <Card className="p-5 sm:p-6">
         {active === "research" ? (
-          <ResearchStage company={company} profile={state.profile} />
+          <ResearchStage company={company} setCompany={setCompany} />
         ) : active === "fit" ? (
-          <FitStage company={company} profile={state.profile} />
+          <FitStage company={company} setCompany={setCompany} />
         ) : active === "proof" ? (
-          <ProofStage company={company} />
+          <ProofStage company={company} setCompany={setCompany} />
         ) : active === "outreach" ? (
-          <OutreachStage company={company} />
+          <OutreachStage company={company} setCompany={setCompany} />
         ) : (
-          <QualityStage company={company} />
+          <QualityStage company={company} setCompany={setCompany} />
         )}
       </Card>
 

@@ -1,5 +1,9 @@
+import { getCompanies } from "@/lib/companies";
 import { CompaniesPage } from "@/components/pipeline/companies-page";
 
-export default function Home() {
-  return <CompaniesPage />;
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const companies = await getCompanies();
+  return <CompaniesPage companies={companies} />;
 }

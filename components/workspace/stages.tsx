@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ClipboardCheck,
@@ -13,28 +13,29 @@ import {
   Trash2,
 } from "lucide-react";
 import {
-  buildDossier,
-  analyzeFit,
-  suggestProofTasks,
-  draftOutreach,
-  checkQuality,
-} from "@/lib/ai";
-import { useScout } from "@/lib/store";
-import type {
-  Company,
-  Dossier,
-  EvidenceProfile,
-  FitAnalysis,
-  OutreachPack,
-  ProofTask,
-} from "@/lib/types";
+  analyzeFitAction,
+  buildDossierAction,
+  checkQualityAction,
+  draftOutreachAction,
+  saveArtifactAction,
+  saveProofTasksAction,
+  suggestProofTasksAction,
+  updateCompanyAction,
+} from "@/app/companies/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import type {
+  Company,
+  Dossier,
+  FitAnalysis,
+  OutreachPack,
+  ProofTask,
+  QualityReport,
+} from "@/lib/types";
 import { words } from "@/lib/utils";
 
 function arrayText(arr?: string[]): string {
@@ -46,6 +47,18 @@ function parseLines(value: string): string[] {
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+function useDraft<T>(value: T, onSave: (v: T) => void, delay = 700) {
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    const t = setTimeout(() => onSave(value), delay);
+    return () => clearTimeout(t);
+  }, [value]);
 }
 
 function StageHeader({
@@ -105,22 +118,33 @@ function LoadingBlock() {
 
 export function ResearchStage({
   company,
-  profile,
+  setCompany,
 }: {
   company: Company;
-  profile: EvidenceProfile;
+  setCompany: (c: Company) => void;
 }) {
-  const { state, updateCompany } = useScout();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mock, setMock] = useState(false);
+  const [draft, setDraft] = useState<Dossier | undefined>(company.dossier);
+
+  useDraft(draft, (d) => {
+    if (d) {
+      saveArtifactAction(company.id, "dossier", d)
+        .then((c) => c && setCompany(c))
+        .catch(() => {});
+    }
+  });
 
   async function run() {
     setLoading(true);
     setError("");
     try {
-      const res = await buildDossier({ company, profile, config: state.ai });
-      updateCompany(company.id, { dossier: res.data });
+      const res = await buildDossierAction(company.id);
+      if (res.company) {
+        setCompany(res.company);
+        setDraft(res.company.dossier);
+      }
       setMock(res.mock);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -130,8 +154,7 @@ export function ResearchStage({
   }
 
   function patchDossier(patch: Partial<Dossier>) {
-    if (!company.dossier) return;
-    updateCompany(company.id, { dossier: { ...company.dossier, ...patch } });
+    setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
   }
 
   return (
@@ -143,7 +166,7 @@ export function ResearchStage({
         action={
           <Button onClick={run} disabled={loading}>
             {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
-            {loading ? "Building..." : company.dossier ? "Rebuild dossier" : "Build dossier"}
+            {loading ? "Building..." : draft ? "Rebuild dossier" : "Build dossier"}
           </Button>
         }
         mock={mock}
@@ -152,76 +175,76 @@ export function ResearchStage({
       {error ? <AIError message={error} onRetry={run} /> : null}
       {loading ? <LoadingBlock /> : null}
 
-      {!loading && company.dossier ? (
+      {!loading && draft ? (
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Company" htmlFor="d-name">
               <Input
                 id="d-name"
-                value={company.dossier.companyName}
+                value={draft.companyName}
                 onChange={(e) => patchDossier({ companyName: e.target.value })}
               />
             </Field>
             <Field label="One-liner" htmlFor="d-oneliner">
               <Input
                 id="d-oneliner"
-                value={company.dossier.oneLiner}
+                value={draft.oneLiner}
                 onChange={(e) => patchDossier({ oneLiner: e.target.value })}
               />
             </Field>
             <Field label="Problem" htmlFor="d-problem">
               <Textarea
                 id="d-problem"
-                value={company.dossier.problem}
+                value={draft.problem}
                 onChange={(e) => patchDossier({ problem: e.target.value })}
               />
             </Field>
             <Field label="Users" htmlFor="d-users">
               <Textarea
                 id="d-users"
-                value={company.dossier.users}
+                value={draft.users}
                 onChange={(e) => patchDossier({ users: e.target.value })}
               />
             </Field>
             <Field label="Differentiation" htmlFor="d-diff">
               <Textarea
                 id="d-diff"
-                value={company.dossier.differentiation}
+                value={draft.differentiation}
                 onChange={(e) => patchDossier({ differentiation: e.target.value })}
               />
             </Field>
             <Field label="Role / likely need" htmlFor="d-role">
               <Textarea
                 id="d-role"
-                value={company.dossier.role}
+                value={draft.role}
                 onChange={(e) => patchDossier({ role: e.target.value })}
               />
             </Field>
             <Field label="Team (one per line)" htmlFor="d-team">
               <Textarea
                 id="d-team"
-                value={arrayText(company.dossier.team)}
+                value={arrayText(draft.team)}
                 onChange={(e) => patchDossier({ team: parseLines(e.target.value) })}
               />
             </Field>
             <Field label="Likely needs (one per line)" htmlFor="d-needs">
               <Textarea
                 id="d-needs"
-                value={arrayText(company.dossier.likelyNeeds)}
+                value={arrayText(draft.likelyNeeds)}
                 onChange={(e) => patchDossier({ likelyNeeds: parseLines(e.target.value) })}
               />
             </Field>
             <Field label="Competitors (one per line)" htmlFor="d-comp">
               <Textarea
                 id="d-comp"
-                value={arrayText(company.dossier.competitors)}
+                value={arrayText(draft.competitors)}
                 onChange={(e) => patchDossier({ competitors: parseLines(e.target.value) })}
               />
             </Field>
             <Field label="Sources (one per line)" htmlFor="d-sources">
               <Textarea
                 id="d-sources"
-                value={arrayText(company.dossier.sources)}
+                value={arrayText(draft.sources)}
                 onChange={(e) => patchDossier({ sources: parseLines(e.target.value) })}
               />
             </Field>
@@ -233,7 +256,7 @@ export function ResearchStage({
             >
               <Textarea
                 id="d-questions"
-                value={arrayText(company.dossier.openQuestions)}
+                value={arrayText(draft.openQuestions)}
                 onChange={(e) => patchDossier({ openQuestions: parseLines(e.target.value) })}
               />
             </Field>
@@ -243,7 +266,7 @@ export function ResearchStage({
             <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
-                checked={company.dossier.verified}
+                checked={draft.verified}
                 onChange={(e) => patchDossier({ verified: e.target.checked })}
                 className="mt-0.5 size-4 accent-foreground"
               />
@@ -261,7 +284,7 @@ export function ResearchStage({
         </div>
       ) : null}
 
-      {!loading && !company.dossier ? (
+      {!loading && !draft ? (
         <p className="text-sm text-muted-foreground">
           Add the company URL and job post in the pipeline, then build the dossier here. Without a
           configured AI key you'll get sample output so you can try the flow.
@@ -273,24 +296,33 @@ export function ResearchStage({
 
 export function FitStage({
   company,
-  profile,
+  setCompany,
 }: {
   company: Company;
-  profile: EvidenceProfile;
+  setCompany: (c: Company) => void;
 }) {
-  const { state, updateCompany } = useScout();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mock, setMock] = useState(false);
-  const dossier = company.dossier;
+  const [draft, setDraft] = useState<FitAnalysis | undefined>(company.fit);
+
+  useDraft(draft, (d) => {
+    if (d) {
+      saveArtifactAction(company.id, "fit", d)
+        .then((c) => c && setCompany(c))
+        .catch(() => {});
+    }
+  });
 
   async function run() {
-    if (!dossier) return;
     setLoading(true);
     setError("");
     try {
-      const res = await analyzeFit({ profile, dossier, config: state.ai });
-      updateCompany(company.id, { fit: res.data });
+      const res = await analyzeFitAction(company.id);
+      if (res.company) {
+        setCompany(res.company);
+        setDraft(res.company.fit);
+      }
       setMock(res.mock);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -300,11 +332,10 @@ export function FitStage({
   }
 
   function patchFit(patch: Partial<FitAnalysis>) {
-    if (!company.fit) return;
-    updateCompany(company.id, { fit: { ...company.fit, ...patch } });
+    setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
   }
 
-  if (!dossier) return null;
+  if (!company.dossier) return null;
 
   return (
     <div>
@@ -315,7 +346,7 @@ export function FitStage({
         action={
           <Button onClick={run} disabled={loading}>
             {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
-            {loading ? "Analyzing..." : company.fit ? "Re-analyze" : "Analyze fit"}
+            {loading ? "Analyzing..." : draft ? "Re-analyze" : "Analyze fit"}
           </Button>
         }
         mock={mock}
@@ -324,28 +355,28 @@ export function FitStage({
       {error ? <AIError message={error} onRetry={run} /> : null}
       {loading ? <LoadingBlock /> : null}
 
-      {!loading && company.fit ? (
+      {!loading && draft ? (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Badge
               variant={
-                company.fit.recommendation === "apply"
+                draft.recommendation === "apply"
                   ? "success"
-                  : company.fit.recommendation === "skip"
+                  : draft.recommendation === "skip"
                     ? "destructive"
                     : "warning"
               }
             >
-              {company.fit.recommendation === "apply"
+              {draft.recommendation === "apply"
                 ? "Apply"
-                : company.fit.recommendation === "skip"
+                : draft.recommendation === "skip"
                   ? "Skip"
                   : "Wait"}
             </Badge>
             <p className="text-sm text-muted-foreground">
-              {company.fit.recommendation === "apply"
+              {draft.recommendation === "apply"
                 ? "Strong evidence match. Move fast."
-                : company.fit.recommendation === "skip"
+                : draft.recommendation === "skip"
                   ? "Weak overlap. Protect your time."
                   : "Real overlap, but proof is missing. Build it before applying."}
             </p>
@@ -354,7 +385,7 @@ export function FitStage({
           <Field label="Reasoning" htmlFor="fit-reason">
             <Textarea
               id="fit-reason"
-              value={company.fit.reasoning}
+              value={draft.reasoning}
               onChange={(e) => patchFit({ reasoning: e.target.value })}
             />
           </Field>
@@ -363,28 +394,30 @@ export function FitStage({
             <Field label="Strong matches (one per line)" htmlFor="fit-strong">
               <Textarea
                 id="fit-strong"
-                value={arrayText(company.fit.strongMatches)}
+                value={arrayText(draft.strongMatches)}
                 onChange={(e) => patchFit({ strongMatches: parseLines(e.target.value) })}
               />
             </Field>
             <Field label="Weak matches (one per line)" htmlFor="fit-weak">
               <Textarea
                 id="fit-weak"
-                value={arrayText(company.fit.weakMatches)}
+                value={arrayText(draft.weakMatches)}
                 onChange={(e) => patchFit({ weakMatches: parseLines(e.target.value) })}
               />
             </Field>
             <Field label="Missing proof (one per line)" htmlFor="fit-missing">
               <Textarea
                 id="fit-missing"
-                value={arrayText(company.fit.missingProof)}
+                value={arrayText(draft.missingProof)}
                 onChange={(e) => patchFit({ missingProof: parseLines(e.target.value) })}
               />
             </Field>
           </div>
 
           <div className="rounded-md border p-4">
-            <p className="text-sm font-medium">Do you genuinely care about what they're building?</p>
+            <p className="text-sm font-medium">
+              Do you genuinely care about what they're building?
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
               The article's warning: people who join without real conviction burn out fast. Answer
               honestly, not aspirationally.
@@ -395,7 +428,7 @@ export function FitStage({
                   <input
                     type="radio"
                     name="interest"
-                    checked={company.fit?.genuineInterest === value}
+                    checked={draft.genuineInterest === value}
                     onChange={() => patchFit({ genuineInterest: value })}
                     className="size-4 accent-foreground"
                   />
@@ -407,7 +440,7 @@ export function FitStage({
         </div>
       ) : null}
 
-      {!loading && !company.fit ? (
+      {!loading && !draft ? (
         <p className="text-sm text-muted-foreground">
           Fit analysis compares your evidence profile against the dossier. Complete your profile
           first so the comparison has real material.
@@ -417,27 +450,33 @@ export function FitStage({
   );
 }
 
-export function ProofStage({ company }: { company: Company }) {
-  const { state, addProofTask, updateProofTask, deleteProofTask } = useScout();
+export function ProofStage({
+  company,
+  setCompany,
+}: {
+  company: Company;
+  setCompany: (c: Company) => void;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mock, setMock] = useState(false);
-  const dossier = company.dossier;
-  const fit = company.fit;
+  const [tasks, setTasks] = useState<ProofTask[]>(company.proofTasks);
+
+  useDraft(tasks, (list) => {
+    const stripped = list.map(({ id: _id, ...rest }) => rest);
+    saveProofTasksAction(company.id, stripped)
+      .then((c) => c && setCompany(c))
+      .catch(() => {});
+  });
 
   async function run() {
-    if (!dossier || !fit) return;
     setLoading(true);
     setError("");
     try {
-      const res = await suggestProofTasks({
-        profile: state.profile,
-        dossier,
-        fit,
-        config: state.ai,
-      });
-      for (const task of res.data.tasks) {
-        addProofTask(company.id, { ...task, done: false, evidenceLink: "", notes: "" });
+      const res = await suggestProofTasksAction(company.id);
+      if (res.company) {
+        setCompany(res.company);
+        setTasks(res.company.proofTasks);
       }
       setMock(res.mock);
     } catch (err) {
@@ -447,9 +486,17 @@ export function ProofStage({ company }: { company: Company }) {
     }
   }
 
-  const doneCount = company.proofTasks.filter((t) => t.done).length;
+  function updateTask(index: number, patch: Partial<ProofTask>) {
+    setTasks((prev) => prev.map((t, i) => (i === index ? { ...t, ...patch } : t)));
+  }
 
-  if (!dossier || !fit) return null;
+  function removeTask(index: number) {
+    setTasks((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  const doneCount = tasks.filter((t) => t.done).length;
+
+  if (!company.dossier || !company.fit) return null;
 
   return (
     <div>
@@ -469,23 +516,23 @@ export function ProofStage({ company }: { company: Company }) {
       {error ? <AIError message={error} onRetry={run} /> : null}
       {loading ? <LoadingBlock /> : null}
 
-      {company.proofTasks.length > 0 ? (
+      {tasks.length > 0 ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            {doneCount}/{company.proofTasks.length} done
+            {doneCount}/{tasks.length} done
           </p>
-          {company.proofTasks.map((task) => (
+          {tasks.map((task, i) => (
             <ProofTaskCard
               key={task.id}
               task={task}
-              onChange={(patch) => updateProofTask(company.id, task.id, patch)}
-              onDelete={() => deleteProofTask(company.id, task.id)}
+              onChange={(patch) => updateTask(i, patch)}
+              onDelete={() => removeTask(i)}
             />
           ))}
         </div>
       ) : null}
 
-      {!loading && company.proofTasks.length === 0 ? (
+      {!loading && tasks.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Tasks mix build, distribution, and research. Shipping without distribution is incomplete
           signal, so expect at least one task that puts your work in front of real people.
@@ -516,7 +563,15 @@ function ProofTaskCard({
           />
           {task.title}
         </label>
-        <Badge variant={task.type === "build" ? "default" : task.type === "distribution" ? "success" : "secondary"}>
+        <Badge
+          variant={
+            task.type === "build"
+              ? "default"
+              : task.type === "distribution"
+                ? "success"
+                : "secondary"
+          }
+        >
           {task.type}
         </Badge>
         <Badge variant="outline">{task.effort}</Badge>
@@ -551,30 +606,47 @@ function ProofTaskCard({
   );
 }
 
-export function OutreachStage({ company }: { company: Company }) {
-  const { state, updateCompany } = useScout();
+export function OutreachStage({
+  company,
+  setCompany,
+}: {
+  company: Company;
+  setCompany: (c: Company) => void;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mock, setMock] = useState(false);
+  const [draft, setDraft] = useState<OutreachPack | undefined>(company.outreach);
   const [contactsText, setContactsText] = useState(company.contacts.join(", "));
-  const dossier = company.dossier;
-  const fit = company.fit;
-  const doneTasks = company.proofTasks.filter((t) => t.done);
+
+  useDraft(draft, (d) => {
+    if (d) {
+      saveArtifactAction(company.id, "outreach", d)
+        .then((c) => c && setCompany(c))
+        .catch(() => {});
+    }
+  });
+
+  useDraft(contactsText, (value) => {
+    updateCompanyAction(company.id, {
+      contacts: value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    })
+      .then((c) => c && setCompany(c))
+      .catch(() => {});
+  });
 
   async function run() {
-    if (!dossier || !fit) return;
     setLoading(true);
     setError("");
     try {
-      const res = await draftOutreach({
-        profile: state.profile,
-        dossier,
-        fit,
-        proofTasks: doneTasks,
-        contacts: company.contacts,
-        config: state.ai,
-      });
-      updateCompany(company.id, { outreach: res.data });
+      const res = await draftOutreachAction(company.id);
+      if (res.company) {
+        setCompany(res.company);
+        setDraft(res.company.outreach);
+      }
       setMock(res.mock);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -584,21 +656,10 @@ export function OutreachStage({ company }: { company: Company }) {
   }
 
   function patchOutreach(patch: Partial<OutreachPack>) {
-    if (!company.outreach) return;
-    updateCompany(company.id, { outreach: { ...company.outreach, ...patch } });
+    setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
   }
 
-  function commitContacts(value: string) {
-    setContactsText(value);
-    updateCompany(company.id, {
-      contacts: value
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    });
-  }
-
-  if (!dossier || !fit) return null;
+  if (!company.dossier || !company.fit) return null;
 
   return (
     <div>
@@ -609,7 +670,7 @@ export function OutreachStage({ company }: { company: Company }) {
         action={
           <Button onClick={run} disabled={loading}>
             {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
-            {loading ? "Drafting..." : company.outreach ? "Redraft" : "Draft outreach"}
+            {loading ? "Drafting..." : draft ? "Redraft" : "Draft outreach"}
           </Button>
         }
         mock={mock}
@@ -627,45 +688,42 @@ export function OutreachStage({ company }: { company: Company }) {
         <Input
           id="o-contacts"
           value={contactsText}
-          onChange={(e) => commitContacts(e.target.value)}
+          onChange={(e) => setContactsText(e.target.value)}
           placeholder="Ada Lovelace, aida@company.com, @handle"
         />
       </Field>
 
-      {!loading && company.outreach ? (
+      {!loading && draft ? (
         <div className="space-y-4">
           <Field
-            label={`Email (${words(company.outreach.email)} words — target under 150)`}
+            label={`Email (${words(draft.email)} words — target under 150)`}
             htmlFor="o-email"
           >
             <Textarea
               id="o-email"
               className="min-h-[220px] font-mono text-xs leading-relaxed"
-              value={company.outreach.email}
+              value={draft.email}
               onChange={(e) => patchOutreach({ email: e.target.value })}
             />
           </Field>
-          <Field
-            label={`LinkedIn (${words(company.outreach.linkedin)} words)`}
-            htmlFor="o-linkedin"
-          >
+          <Field label={`LinkedIn (${words(draft.linkedin)} words)`} htmlFor="o-linkedin">
             <Textarea
               id="o-linkedin"
-              value={company.outreach.linkedin}
+              value={draft.linkedin}
               onChange={(e) => patchOutreach({ linkedin: e.target.value })}
             />
           </Field>
-          <Field label={`X / DM (${words(company.outreach.x)} words)`} htmlFor="o-x">
+          <Field label={`X / DM (${words(draft.x)} words)`} htmlFor="o-x">
             <Textarea
               id="o-x"
-              value={company.outreach.x}
+              value={draft.x}
               onChange={(e) => patchOutreach({ x: e.target.value })}
             />
           </Field>
           <Field label="Follow-up (5-7 days later)" htmlFor="o-followup">
             <Textarea
               id="o-followup"
-              value={company.outreach.followUp}
+              value={draft.followUp}
               onChange={(e) => patchOutreach({ followUp: e.target.value })}
             />
           </Field>
@@ -674,7 +732,7 @@ export function OutreachStage({ company }: { company: Company }) {
               <AlertTriangle className="size-4" /> Fill these in before sending
             </p>
             <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-muted-foreground">
-              {company.outreach.notes
+              {draft.notes
                 .split("\n")
                 .filter(Boolean)
                 .map((note, i) => (
@@ -685,7 +743,7 @@ export function OutreachStage({ company }: { company: Company }) {
         </div>
       ) : null}
 
-      {!loading && !company.outreach ? (
+      {!loading && !draft ? (
         <p className="text-sm text-muted-foreground">
           Outreach drafts from your profile, the dossier, and your completed proof tasks. Finish at
           least one proof task first: the draft is only as strong as the evidence behind it.
@@ -695,24 +753,27 @@ export function OutreachStage({ company }: { company: Company }) {
   );
 }
 
-export function QualityStage({ company }: { company: Company }) {
-  const { state, updateCompany } = useScout();
+export function QualityStage({
+  company,
+  setCompany,
+}: {
+  company: Company;
+  setCompany: (c: Company) => void;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mock, setMock] = useState(false);
-  const dossier = company.dossier;
+  const [report, setReport] = useState<QualityReport | undefined>(company.quality);
 
   async function run() {
-    if (!dossier || !company.outreach) return;
     setLoading(true);
     setError("");
     try {
-      const res = await checkQuality({
-        outreach: company.outreach,
-        dossier,
-        config: state.ai,
-      });
-      updateCompany(company.id, { quality: res.data });
+      const res = await checkQualityAction(company.id);
+      if (res.company) {
+        setCompany(res.company);
+        setReport(res.company.quality);
+      }
       setMock(res.mock);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -721,7 +782,7 @@ export function QualityStage({ company }: { company: Company }) {
     }
   }
 
-  if (!dossier || !company.outreach) return null;
+  if (!company.dossier || !company.outreach) return null;
 
   return (
     <div>
@@ -732,7 +793,7 @@ export function QualityStage({ company }: { company: Company }) {
         action={
           <Button onClick={run} disabled={loading}>
             {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
-            {loading ? "Checking..." : company.quality ? "Re-check" : "Run quality check"}
+            {loading ? "Checking..." : report ? "Re-check" : "Run quality check"}
           </Button>
         }
         mock={mock}
@@ -741,14 +802,14 @@ export function QualityStage({ company }: { company: Company }) {
       {error ? <AIError message={error} onRetry={run} /> : null}
       {loading ? <LoadingBlock /> : null}
 
-      {!loading && company.quality ? (
+      {!loading && report ? (
         <div className="space-y-4">
           <div className="flex items-center gap-4 rounded-lg border p-4">
-            <div className="text-4xl font-semibold tracking-tight">{company.quality.score}</div>
+            <div className="text-4xl font-semibold tracking-tight">{report.score}</div>
             <div>
-              <p className="font-medium">{company.quality.verdict}</p>
+              <p className="font-medium">{report.verdict}</p>
               <p className="text-xs text-muted-foreground">
-                {company.quality.score >= 75
+                {report.score >= 75
                   ? "Strong enough that a follow-up is worth it."
                   : "Fix the flags before sending. Follow-ups amplify signal; they don't create it."}
               </p>
@@ -756,7 +817,7 @@ export function QualityStage({ company }: { company: Company }) {
           </div>
 
           <div className="space-y-2">
-            {company.quality.flags.map((flag, i) => (
+            {report.flags.map((flag, i) => (
               <div key={i} className="flex items-start gap-3 rounded-md border p-3">
                 <Badge
                   variant={
@@ -779,7 +840,7 @@ export function QualityStage({ company }: { company: Company }) {
         </div>
       ) : null}
 
-      {!loading && !company.quality ? (
+      {!loading && !report ? (
         <p className="text-sm text-muted-foreground">
           Run this after drafting outreach. It flags claims without links, buzzwords, AI-slop, and
           generic praise. Your drafts were written to pass; verify they still do after your edits.

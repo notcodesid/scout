@@ -172,6 +172,5 @@ export interface AIConfig {
 
 export interface AppState {
   profile: EvidenceProfile;
-  companies: Company[];
   ai: AIConfig;
 }

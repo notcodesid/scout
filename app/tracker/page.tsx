@@ -1,5 +1,9 @@
 import { TrackerPage } from "@/components/tracker/tracker-page";
+import { getCompanies } from "@/lib/companies";
 
-export default function Tracker() {
-  return <TrackerPage />;
+export const dynamic = "force-dynamic";
+
+export default async function Tracker() {
+  const companies = await getCompanies();
+  return <TrackerPage companies={companies} />;
 }

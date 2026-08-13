@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowRight, Building2, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ArrowRight, Building2, Plus, Trash2 } from "lucide-react";
+import { addCompanyAction, deleteCompanyAction } from "@/app/companies/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,27 +12,48 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useScout } from "@/lib/store";
+import type { Company } from "@/lib/types";
 import { STAGE_LABELS } from "@/lib/types";
 import { cn, timeAgo } from "@/lib/utils";
 
-export function CompaniesPage() {
-  const { state, addCompany, deleteCompany, loadSample } = useScout();
+export function CompaniesPage({ companies }: { companies: Company[] }) {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [jobUrl, setJobUrl] = useState("");
   const [notes, setNotes] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
-    addCompany({ name: name.trim(), url: url.trim(), jobUrl: jobUrl.trim(), notes: notes.trim(), contacts: [] });
-    setName("");
-    setUrl("");
-    setJobUrl("");
-    setNotes("");
-    setFormOpen(false);
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await addCompanyAction({
+        name: name.trim(),
+        url: url.trim(),
+        jobUrl: jobUrl.trim(),
+        notes: notes.trim(),
+      });
+      setName("");
+      setUrl("");
+      setJobUrl("");
+      setNotes("");
+      setFormOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add company");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(id: string) {
+    await deleteCompanyAction(id);
+    router.refresh();
   }
 
   return (
@@ -47,6 +70,12 @@ export function CompaniesPage() {
           <Plus /> Add company
         </Button>
       </div>
+
+      {error ? (
+        <p className="rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
 
       {formOpen ? (
         <Card>
@@ -93,8 +122,8 @@ export function CompaniesPage() {
                 />
               </Field>
               <div className="flex gap-2 sm:col-span-2">
-                <Button type="submit" disabled={!name.trim()}>
-                  Add to pipeline
+                <Button type="submit" disabled={!name.trim() || saving}>
+                  {saving ? "Adding..." : "Add to pipeline"}
                 </Button>
                 <Button variant="ghost" onClick={() => setFormOpen(false)}>
                   Cancel
@@ -105,25 +134,20 @@ export function CompaniesPage() {
         </Card>
       ) : null}
 
-      {state.companies.length === 0 ? (
+      {companies.length === 0 ? (
         <EmptyState
           icon={<Building2 className="size-8" />}
           title="No companies yet"
           description="Add the first company you want to apply to properly, then work it through the pipeline. The point is to go deep, not wide."
           action={
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button onClick={() => setFormOpen(true)}>
-                <Plus /> Add company
-              </Button>
-              <Button variant="outline" onClick={loadSample}>
-                <Sparkles /> Load sample data
-              </Button>
-            </div>
+            <Button onClick={() => setFormOpen(true)}>
+              <Plus /> Add company
+            </Button>
           }
         />
       ) : (
         <div className="space-y-3">
-          {state.companies.map((company) => {
+          {companies.map((company) => {
             const doneTasks = company.proofTasks.filter((t) => t.done).length;
             return (
               <Card key={company.id}>
@@ -168,7 +192,7 @@ export function CompaniesPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => deleteCompany(company.id)}
+                    onClick={() => remove(company.id)}
                     aria-label={`Delete ${company.name}`}
                   >
                     <Trash2 />

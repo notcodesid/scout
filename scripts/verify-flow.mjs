@@ -2,94 +2,18 @@ import { chromium } from "playwright-core";
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const BASE = "http://127.0.0.1:3000";
-const OUT_DIR = "/tmp/scout-shots";
-
-import { mkdirSync } from "node:fs";
-mkdirSync(OUT_DIR, { recursive: true });
-
-const sampleState = {
-  profile: {
-    id: undefined,
-    name: "Siddharth",
-    headline: "Full-stack developer who ships for real users",
-    about: "",
-    location: "India",
-    email: "you@example.com",
-    phone: "",
-    timezone: "",
-    githubUsername: "you",
-    availability: "immediately",
-    remote: true,
-    openToRelocate: false,
-    targetRoles: ["Full-stack engineer"],
-    links: [
-      { label: "GitHub", url: "https://github.com/you" },
-      { label: "Portfolio", url: "https://you.dev" },
-    ],
-    skills: [
-      { name: "TypeScript", years: 3 },
-      { name: "React", years: 3 },
-    ],
-    projects: [
-      {
-        id: "p1",
-        name: "Submission tracker for design students",
-        problem: "Design students miss deadlines across 5+ platforms.",
-        work: "Built an aggregator with reminders.",
-        outcome: "Used by 150+ students; ~2k deadline checks a week.",
-        users: "Posted in 3 communities; 40 signups in week one.",
-        links: ["https://yoursite.com"],
-        tags: ["React", "Supabase"],
-        startDate: "",
-        endDate: "",
-      },
-    ],
-    education: [],
-    experience: [],
-  },
-  companies: [
-    {
-      id: "c1",
-      name: "Dodge AI",
-      url: "https://dodgeai.com",
-      jobUrl: "https://dodgeai.com/jobs",
-      notes: "Paste the job post here. Sample data for testing the flow.",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      stage: "research",
-      contacts: [],
-      proofTasks: [],
-      followUpDate: "",
-    },
-  ],
-  ai: { baseUrl: "", model: "", apiKey: "" },
-};
 
 const browser = await chromium.launch({
   executablePath: CHROME,
   headless: true,
   args: ["--no-sandbox", "--disable-gpu"],
 });
-const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
 
-async function seed() {
-  await page.addInitScript((data) => {
-    try {
-      localStorage.setItem("scout:v1", JSON.stringify(data));
-    } catch (e) {
-      console.log("seed error", e);
-    }
-  }, sampleState);
-}
-
-async function shot(name) {
-  await page.screenshot({ path: `${OUT_DIR}/${name}.png`, fullPage: false });
-  console.log("shot:", name);
-}
+page.on("pageerror", (err) => console.log("PAGEERROR:", err.message.slice(0, 300)));
 
 async function clickByText(text) {
-  const el = page.getByRole("button", { name: text, exact: false }).first();
-  await el.click();
+  await page.getByRole("button", { name: text, exact: false }).first().click();
 }
 
 async function waitFor(text, timeout = 60000) {
@@ -97,65 +21,75 @@ async function waitFor(text, timeout = 60000) {
 }
 
 try {
-  await seed();
+  // 1. Pipeline: add a company through the UI (persisted to Postgres)
   await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
-  await shot("01-pipeline");
+  await waitFor("Pipeline");
+  await page.getByRole("button", { name: "Add company", exact: true }).first().click();
+  await page.locator("#c-name").fill("Acme Labs");
+  await page.locator("#c-url").fill("https://acme.com");
+  await page.locator("#c-notes").fill(
+    "Paste: building an AI note-taking tool for teams. Job post mentions a full-stack role shipping fast."
+  );
+  await page.getByRole("button", { name: "Add to pipeline" }).click();
+  await page.getByRole("link", { name: "Acme Labs", exact: true }).waitFor({ timeout: 20000 });
+  console.log("COMPANY_ADDED");
 
-  await page.getByRole("link", { name: "Dodge AI", exact: true }).click();
+  // 2. Research
+  await page.getByRole("link", { name: "Acme Labs", exact: true }).click();
   await waitFor("Research dossier");
-  await shot("02-workspace-research");
-
   await clickByText("Build dossier");
   await waitFor("I actually read the sources");
-  await shot("03-dossier-built");
+  console.log("DOSSIER_OK");
 
   await page.getByText("I actually read the sources").click();
   await page.getByRole("tab", { name: /Fit/ }).click();
   await waitFor("Fit analysis");
+
+  // 3. Fit
   await clickByText("Analyze fit");
   await waitFor("Do you genuinely care");
-  await shot("04-fit-analysis");
-
+  console.log("FIT_OK");
   await page.getByRole("radio", { name: "Yes" }).check();
+
+  // 4. Proof
   await page.getByRole("tab", { name: /Proof/ }).click();
   await waitFor("Proof task");
   await clickByText("Suggest proof tasks");
   await waitFor("Evidence link");
-  await shot("05-proof-tasks");
-
+  console.log("PROOF_OK");
   await page.getByRole("checkbox").first().check();
+
+  // 5. Outreach
   await page.getByRole("tab", { name: /Outreach/ }).click();
   await waitFor("Outreach");
   await clickByText("Draft outreach");
   await waitFor("Fill these in before sending");
-  await shot("06-outreach");
+  console.log("OUTREACH_OK");
 
+  // 6. Quality
   await page.getByRole("tab", { name: /Quality/ }).click();
   await waitFor("Quality check");
   await clickByText("Run quality check");
   await page.getByRole("button", { name: "Re-check" }).waitFor({ timeout: 60000 });
-  await shot("07-quality");
+  console.log("QUALITY_OK");
 
-  await page.goto(`${BASE}/profile`, { waitUntil: "networkidle" });
-  await waitFor("Evidence profile");
-  await shot("08-profile");
-
+  // 7. Reload persistence + tracker
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  await page.getByRole("link", { name: "Acme Labs", exact: true }).waitFor();
   await page.goto(`${BASE}/tracker`, { waitUntil: "networkidle" });
   await waitFor("Tracker");
-  await shot("09-tracker");
+  await page.getByRole("link", { name: "Acme Labs" }).waitFor();
+  console.log("PERSIST_OK");
 
-  // Mobile check
+  // 8. Mobile sanity
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
-  await shot("10-mobile-pipeline");
-  await page.getByRole("link", { name: "Dodge AI", exact: true }).click();
-  await waitFor("Research dossier");
-  await shot("11-mobile-workspace");
+  await page.getByRole("link", { name: "Acme Labs", exact: true }).waitFor();
+  console.log("MOBILE_OK");
 
   console.log("FLOW_OK");
 } catch (err) {
   console.error("FLOW_FAIL:", err.message);
-  await shot("error-state");
   process.exitCode = 1;
 } finally {
   await browser.close();

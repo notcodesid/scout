@@ -20,12 +20,13 @@ into an executable workflow:
    AI-slop, generic praise, length.
 
 The pipeline is gated on purpose. You cannot reach outreach without verified research, a fit
-verdict, and at least one completed proof task. That gate *is* the product.
+verdict, and at least one completed proof task. That gate *is* the product. AI generation runs
+server-side against your DB profile, using the key from `.env.local` (no browser config needed).
 
 ## Stack
 
 - Next.js (App Router) + TypeScript + Tailwind CSS v4
-- Local-first: user profile lives in Postgres (Docker), the rest is in your browser for now.
+- Local-first: everything (profile + company pipeline) lives in Postgres (Docker).
 - AI via any OpenAI-compatible provider, defaulting to Google's free Gemini tier.
 - Prisma ORM with a full user-domain schema (links, skills, projects, experience, education).
 
