@@ -4,7 +4,15 @@ import { PrismaPg } from "@prisma/adapter-pg";
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function createClient(): PrismaClient {
-  const adapter = new PrismaPg(process.env.DATABASE_URL ?? "");
+  // The DB is remote (Supabase) and already fronted by a transaction pooler, so
+  // each instance only needs a small local pool. Timeouts are explicit because a
+  // hung connection over the network would otherwise stall a server action.
+  const adapter = new PrismaPg({
+    connectionString: process.env.DATABASE_URL ?? "",
+    max: 5,
+    connectionTimeoutMillis: 15_000,
+    idleTimeoutMillis: 30_000,
+  });
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],

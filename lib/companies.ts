@@ -8,6 +8,7 @@ import type {
   ProofTask,
   QualityFlag,
   QualityReport,
+  PersonContact,
   ResearchMaterial,
   ResearchSource,
 } from "./types";
@@ -121,11 +122,27 @@ function normalizeResearch(value: unknown): ResearchMaterial | undefined {
           author: s?.author ? asString(s.author) : undefined,
         }))
       : [],
+    pages: Array.isArray(r.pages)
+      ? r.pages.map((p) => ({
+          url: asString(p?.url),
+          title: asString(p?.title),
+          text: asString(p?.text),
+        }))
+      : [],
+    people: Array.isArray(r.people)
+      ? r.people.map((p) => normalizePerson(p))
+      : [],
+    observations: Array.isArray(r.observations)
+      ? r.observations.map((o) => asString(o)).filter(Boolean)
+      : [],
     sources: rawSources.map((s) => ({
       url: asString(s?.url),
       title: asString(s?.title),
       kind:
-        s?.kind === "website" || s?.kind === "job" || s?.kind === "search"
+        s?.kind === "website" ||
+        s?.kind === "job" ||
+        s?.kind === "search" ||
+        s?.kind === "page"
           ? s.kind
           : "search",
       status:
@@ -137,6 +154,19 @@ function normalizeResearch(value: unknown): ResearchMaterial | undefined {
     })),
     generatedAt:
       typeof r.generatedAt === "number" ? r.generatedAt : Date.now(),
+  };
+}
+
+function normalizePerson(p: unknown): PersonContact {
+  const value = (p ?? {}) as Partial<PersonContact>;
+  return {
+    name: asString(value.name),
+    role: asString(value.role),
+    email: asString(value.email),
+    linkedin: asString(value.linkedin),
+    x: asString(value.x),
+    github: asString(value.github),
+    sourceUrl: asString(value.sourceUrl),
   };
 }
 

@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
+import { requireUserJson } from "@/lib/auth";
 
 const DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/";
 const DEFAULT_MODEL = "gemini-3.5-flash";
 
 export async function GET() {
+  if (!(await requireUserJson())) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
   return NextResponse.json({ configured: Boolean(process.env.AI_API_KEY) });
 }
 
 export async function POST(req: Request) {
+  // Without this gate the route is an open relay to a paid API key: anyone who
+  // can reach the server could spend the quota on arbitrary prompts.
+  if (!(await requireUserJson())) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
   let body: { system?: string; user?: string; model?: string } = {};
   try {
     body = await req.json();

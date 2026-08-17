@@ -1,3 +1,7 @@
+# Scout runs on hosted Supabase Postgres — this local instance is NOT needed to
+# run the app. It exists only to author new migrations: Supabase won't let
+# Prisma create the shadow database that `prisma migrate dev` requires. See the
+# "Writing new migrations" section in README.md.
 services:
   postgres:
     image: postgres:17-alpine

@@ -7,12 +7,17 @@ import {
   Compass,
   ExternalLink,
   FileSearch,
+  Github,
+  Linkedin,
   Loader2,
+  Mail,
   PenLine,
   ShieldCheck,
   Sparkles,
   Target,
   Trash2,
+  Twitter,
+  Users,
 } from "lucide-react";
 import {
   analyzeFitAction,
@@ -21,6 +26,7 @@ import {
   draftOutreachAction,
   researchCompanyAction,
   saveArtifactAction,
+  saveObservationsAction,
   saveProofTasksAction,
   suggestProofTasksAction,
   updateCompanyAction,
@@ -36,6 +42,7 @@ import type {
   Dossier,
   FitAnalysis,
   OutreachPack,
+  PersonContact,
   ProofTask,
   QualityReport,
   ResearchMaterial,
@@ -53,6 +60,18 @@ function parseLines(value: string): string[] {
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+function cleanInferred(value: string): string {
+  return value
+    .replace(/\s*\[inferred\]\s*/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function sanitizeDossier(d?: Dossier): Dossier | undefined {
+  if (!d) return d;
+  return { ...d, likelyNeeds: (d.likelyNeeds ?? []).map(cleanInferred) };
 }
 
 function useDraft<T>(value: T, onSave: (v: T) => void, delay = 700) {
@@ -137,7 +156,9 @@ export function ResearchStage({
   const [building, setBuilding] = useState(false);
   const [steps, setSteps] = useState<ResearchStep[] | undefined>();
   const [stageIndex, setStageIndex] = useState(0);
-  const [draft, setDraft] = useState<Dossier | undefined>(company.dossier);
+  const [draft, setDraft] = useState<Dossier | undefined>(() =>
+    sanitizeDossier(company.dossier)
+  );
   const [research, setResearch] = useState<ResearchMaterial | undefined>(
     company.research
   );
@@ -176,7 +197,7 @@ export function ResearchStage({
       const res = await buildDossierAction(company.id);
       if (res.company) {
         setCompany(res.company);
-        setDraft(res.company.dossier);
+        setDraft(sanitizeDossier(res.company.dossier));
         setResearch(res.company.research);
       }
       setMock(res.mock);
@@ -195,7 +216,7 @@ export function ResearchStage({
       const res = await researchCompanyAction(company.id);
       if (res.company) {
         setCompany(res.company);
-        setDraft(res.company.dossier);
+        setDraft(sanitizeDossier(res.company.dossier));
         setResearch(res.company.research);
       }
       setSteps(res.steps);
@@ -304,6 +325,10 @@ export function ResearchStage({
         <ResearchSourcesPanel research={research} steps={steps} />
       ) : null}
 
+      {research && !researching && !loading ? (
+        <PeoplePanel people={research.people} />
+      ) : null}
+
       {!loading && draft ? (
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -356,7 +381,11 @@ export function ResearchStage({
                 onChange={(e) => patchDossier({ team: parseLines(e.target.value) })}
               />
             </Field>
-            <Field label="Likely needs (one per line)" htmlFor="d-needs">
+            <Field
+              label="Likely needs (one per line)"
+              htmlFor="d-needs"
+              hint="AI's best guesses from the material — verify before repeating them."
+            >
               <Textarea
                 id="d-needs"
                 value={arrayText(draft.likelyNeeds)}
@@ -464,8 +493,8 @@ function ResearchSourcesPanel({
         </div>
       ) : null}
       <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
-        {research.sources.map((source) => (
-          <SourceRow key={source.url} source={source} />
+        {research.sources.map((source, i) => (
+          <SourceRow key={`${source.url}-${source.kind}-${i}`} source={source} />
         ))}
       </div>
       {failed.length > 0 ? (
@@ -515,6 +544,109 @@ function SourceRow({ source }: { source: ResearchSource }) {
       ) : null}
     </div>
   );
+}
+
+function PeoplePanel({ people }: { people: PersonContact[] }) {
+  if (!people.length) {
+    return (
+      <div className="mb-5 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+        No team members found yet. Re-run research with a job post for better
+        coverage, or add the people you know to contacts in the Outreach stage.
+      </div>
+    );
+  }
+  return (
+    <div className="mb-5 rounded-lg border bg-card p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-sm font-medium">
+          <Users className="size-4 text-muted-foreground" /> People found
+        </p>
+        <Badge variant="secondary">{people.length}</Badge>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Best-effort public contact info from web search. Verify before reaching
+        out — a wrong email or a dead link is worse than no contact.
+      </p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {people.map((person) => (
+          <PersonCard key={person.name} person={person} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PersonCard({ person }: { person: PersonContact }) {
+  return (
+    <div className="rounded-md border bg-background p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium">{person.name}</p>
+        {person.role ? <Badge variant="secondary">{person.role}</Badge> : null}
+      </div>
+      <div className="mt-2 space-y-1.5 text-xs">
+        {person.email ? (
+          <a
+            href={`mailto:${person.email}`}
+            className="flex items-center gap-1.5 hover:underline"
+          >
+            <Mail className="size-3.5 text-muted-foreground" /> {person.email}
+          </a>
+        ) : null}
+        {person.linkedin ? (
+          <a
+            href={person.linkedin}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 hover:underline"
+          >
+            <Linkedin className="size-3.5 text-muted-foreground" /> LinkedIn
+          </a>
+        ) : null}
+        {person.x ? (
+          <a
+            href={person.x}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 hover:underline"
+          >
+            <Twitter className="size-3.5 text-muted-foreground" /> X / Twitter
+          </a>
+        ) : null}
+        {person.github ? (
+          <a
+            href={person.github}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 hover:underline"
+          >
+            <Github className="size-3.5 text-muted-foreground" /> GitHub
+          </a>
+        ) : null}
+        {person.sourceUrl ? (
+          <p className="text-muted-foreground">
+            via{" "}
+            <a
+              href={person.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 hover:underline"
+            >
+              {hostname(person.sourceUrl)}
+              <ExternalLink className="size-3" />
+            </a>
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function hostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
 }
 
 export function FitStage({
@@ -684,10 +816,19 @@ export function ProofStage({
   const [error, setError] = useState("");
   const [mock, setMock] = useState(false);
   const [tasks, setTasks] = useState<ProofTask[]>(company.proofTasks);
+  const [observations, setObservations] = useState<string[]>(
+    () => company.research?.observations ?? []
+  );
 
   useDraft(tasks, (list) => {
     const stripped = list.map(({ id: _id, ...rest }) => rest);
     saveProofTasksAction(company.id, stripped)
+      .then((c) => c && setCompany(c))
+      .catch(() => {});
+  });
+
+  useDraft(observations, (list) => {
+    saveObservationsAction(company.id, list)
       .then((c) => c && setCompany(c))
       .catch(() => {});
   });
@@ -726,7 +867,7 @@ export function ProofStage({
       <StageHeader
         icon={<ShieldCheck className="size-5" />}
         title="Proof task"
-        description="The killer feature: one small, company-specific piece of work that proves you can help. Outreach stays locked until at least one is done."
+        description="The killer feature: one small piece of work, grounded in what you actually observed, that proves you can help. Outreach stays locked until at least one is done."
         action={
           <Button onClick={run} disabled={loading}>
             {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
@@ -738,6 +879,22 @@ export function ProofStage({
 
       {error ? <AIError message={error} onRetry={run} /> : null}
       {loading ? <LoadingBlock /> : null}
+
+      <Field
+        label="What did you actually notice?"
+        htmlFor="p-observations"
+        hint="Use the product, read their docs, changelog, and public issues, and watch community feedback. Record what you really hit — the generator will only build tasks around these. If there are none, it suggests a quick research task first instead of guessing."
+        className="mb-5"
+      >
+        <Textarea
+          id="p-observations"
+          rows={4}
+          className="resize-none"
+          value={arrayText(observations)}
+          onChange={(e) => setObservations(parseLines(e.target.value))}
+          placeholder={"The onboarding asks for the same info twice\nTheir changelog shipped X but the docs still describe Y\nUsers in their community keep asking for Z"}
+        />
+      </Field>
 
       {tasks.length > 0 ? (
         <div className="space-y-3">
@@ -757,8 +914,10 @@ export function ProofStage({
 
       {!loading && tasks.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Tasks mix build, distribution, and research. Shipping without distribution is incomplete
-          signal, so expect at least one task that puts your work in front of real people.
+          First, note what you observed using the product. Tasks are only
+          suggested around real observations — if you haven't recorded any, the
+          generator will propose a quick research task that produces them,
+          not a build you might waste time on.
         </p>
       ) : null}
     </div>
@@ -861,6 +1020,15 @@ export function OutreachStage({
       .catch(() => {});
   });
 
+  const researchPeople = company.research?.people ?? [];
+
+  function addPeopleToContacts() {
+    const lines = researchPeople.map((p) =>
+      [p.name, p.email, p.linkedin, p.x].filter(Boolean).join(" · ")
+    );
+    setContactsText((prev) => [prev, ...lines].filter(Boolean).join("\n"));
+  }
+
   async function run() {
     setLoading(true);
     setError("");
@@ -916,6 +1084,18 @@ export function OutreachStage({
           onChange={(e) => setContactsText(e.target.value)}
           placeholder={"Ada Lovelace, aida@company.com, @handle\nKai Chen, kai@company.com"}
         />
+        {researchPeople.length > 0 ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={addPeopleToContacts}
+          >
+            <Users /> Add {researchPeople.length} team member
+            {researchPeople.length === 1 ? "" : "s"} from research
+          </Button>
+        ) : null}
       </Field>
 
       {!loading && draft ? (

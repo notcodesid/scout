@@ -4,6 +4,7 @@ import type {
   EvidenceProfile,
   FitAnalysis,
   OutreachPack,
+  PersonContact,
   ProofTask,
   QualityReport,
   ResearchMaterial,
@@ -16,9 +17,35 @@ Rules:
 - Never invent facts. If something is unknown or unverifiable, write "Unknown" or "Not in provided material".
 - Be specific. Vague praise is useless.
 - Sources: list the exact URLs from the provided material that you actually used.
-- Team: only list people you can name from the material. Never guess names.
-- Likely needs: infer what the company probably needs help with, based only on provided material. Mark inference clearly.
+- Team: extract founder, co-founder, leadership, and team names from the material
+  (website, job post, news, search results). Format as "Name — Role" when the
+  role is known. Only people actually named in the material; never guess names.
+- Likely needs: infer what the company probably needs help with, based only on
+  provided material. These are your inferences — never present them as
+  company-stated facts. Do not add any marker like "[inferred]" to the text.
 Respond with a single JSON object only. No markdown, no commentary.`;
+
+// The dossier only needs the candidate for context (it must not appear in the
+// output), so send a compact summary to keep free-tier prompts under token
+// limits. Fit and outreach use the full profile.
+function compactProfile(profile: EvidenceProfile) {
+  return {
+    name: profile.name,
+    headline: profile.headline,
+    skills: profile.skills.slice(0, 10).map((s) => `${s.name} (${s.years}y)`),
+    projects: profile.projects.slice(0, 5).map((p) => ({
+      name: p.name,
+      problem: p.problem.slice(0, 200),
+      outcome: p.outcome.slice(0, 200),
+      users: p.users.slice(0, 120),
+    })),
+    experience: profile.experience.slice(0, 5).map((e) => ({
+      company: e.company,
+      role: e.role,
+      summary: e.summary.slice(0, 200),
+    })),
+  };
+}
 
 export function dossierUser(input: {
   companyUrl: string;
@@ -36,9 +63,25 @@ export function dossierUser(input: {
         )
         .join("\n")
     : "No search results available.";
+  const pagesBlock = material?.pages.length
+    ? material.pages
+        .map((p) => `--- ${p.title} (${p.url}) ---\n${p.text}`)
+        .join("\n\n")
+    : "No additional pages fetched.";
+  const peopleBlock = material?.people.length
+    ? material.people
+        .map(
+          (p) =>
+            `${p.name}${p.role ? ` — ${p.role}` : ""}` +
+            `${p.email ? ` · ${p.email}` : ""}` +
+            `${p.linkedin ? ` · ${p.linkedin}` : ""}` +
+            `${p.x ? ` · ${p.x}` : ""}`
+        )
+        .join("\n")
+    : "No people found yet.";
 
   return `Candidate profile (for context only, do not include in the dossier):
-${JSON.stringify(input.profile, null, 2)}
+${JSON.stringify(compactProfile(input.profile), null, 2)}
 
 Company URL: ${input.companyUrl || "not provided"}
 Job post URL: ${input.jobUrl || "not provided"}
@@ -51,13 +94,20 @@ ${material?.websiteText || "Website was not fetched or is unavailable."}
 === FETCHED JOB POST CONTENT ===
 ${material?.jobText || "Job post was not fetched or is unavailable."}
 
+=== ADDITIONAL PAGES (team / about) ===
+${pagesBlock}
+
 === WEB SEARCH RESULTS ===
 ${searchBlock}
+
+=== PEOPLE FOUND ===
+${peopleBlock}
 
 === INSTRUCTIONS ===
 Base every field on the fetched material above. Cite only URLs that appear in
 the material. When a field cannot be answered from the material, write "Unknown"
-or "Not in provided material". Mark anything you infer as [inferred].
+or "Not in provided material". Mark anything you infer as [inferred]. Use the
+People found list when filling the "team" field.
 
 Return JSON with exactly these fields:
 {
@@ -68,10 +118,55 @@ Return JSON with exactly these fields:
   "differentiation": "how they are different from alternatives",
   "team": ["names only if known"],
   "role": "what the role seems to need, or the company's likely hiring need",
-  "likelyNeeds": ["3-5 specific things they probably need help with, marked [inferred] when inferred"],
+  "likelyNeeds": ["3-5 specific things they probably need help with — inferred from the material, not stated by the company"],
   "competitors": ["alternatives, from provided material only"],
   "sources": ["every URL provided or cited"],
   "openQuestions": ["3-5 questions the candidate should verify before applying"]
+}`;
+}
+
+export const PEOPLE_SYSTEM = `You extract people from startup research material for Scout.
+Find every person the material indicates is a founder, co-founder, executive, or
+team member of the company. Rules:
+- name is required; role only if the material states it.
+- email, linkedin, and x: ONLY if the material literally contains them. Never guess
+  or reconstruct emails or profile URLs.
+- Ignore generic addresses like support@ or careers@ unless tied to a named person.
+- If no people are found, return an empty list.
+Respond with a single JSON object only. No markdown.`;
+
+export function peopleUser(input: {
+  companyName: string;
+  material: ResearchMaterial;
+}): string {
+  const m = input.material;
+  return `Company: ${input.companyName}
+
+=== WEBSITE CONTENT ===
+${m.websiteText || "not fetched"}
+
+=== JOB POST CONTENT ===
+${m.jobText || "not fetched"}
+
+=== ADDITIONAL PAGES ===
+${m.pages.map((p) => `--- ${p.title} (${p.url}) ---\n${p.text}`).join("\n\n") || "none"}
+
+=== SEARCH RESULTS ===
+${m.searchResults
+  .map((r, i) => `${i + 1}. ${r.title} — ${r.url}\n   ${r.snippet || ""}`)
+  .join("\n") || "none"}
+
+Return JSON with exactly this shape:
+{
+  "people": [
+    {
+      "name": "full name",
+      "role": "role if known, otherwise \"\"",
+      "email": "only if literally in the material",
+      "linkedin": "only if literally in the material",
+      "x": "only if literally in the material"
+    }
+  ]
 }`;
 }
 
@@ -111,6 +206,17 @@ export const PROOF_SYSTEM = `You are the proof-task engine for Scout. This is th
 Given a candidate's evidence and a company dossier, suggest 1-3 realistic tasks that build trust BEFORE applying.
 Rules:
 - Company-specific. A task must reference the company's product, problem, or users, not a generic tutorial.
+- EVIDENCE OF NEED IS MANDATORY. Never invent a need. Every task must be grounded in
+  at least one of: (1) the candidate's own recorded observations of the product,
+  (2) a public issue, changelog entry, or user complaint from the material, or
+  (3) the fit analysis' missing-proof list. The "why" must name that evidence explicitly.
+- If the candidate provided observations: build tasks around those observations.
+  Quote or paraphrase the observation in the task's "why" so it's clear which real
+  friction the task addresses.
+- If the candidate provided NO observations: do not suggest a build task yet.
+  Suggest a research task (30 min or 1-2 hrs) that produces concrete observations
+  of the product, and make its output a written observation list the candidate can
+  later build from.
 - Realistic effort: 30 min, 1-2 hrs, half day, or a day. Prefer the smallest task that proves something real.
 - Mix task types:
   build = produce a linkable artifact (fix, test, prototype, writeup, demo).
@@ -124,6 +230,7 @@ export function proofUser(input: {
   profile: EvidenceProfile;
   dossier: Dossier;
   fit: FitAnalysis;
+  observations: string[];
 }): string {
   return `CANDIDATE EVIDENCE PROFILE:
 ${JSON.stringify(input.profile, null, 2)}
@@ -134,6 +241,12 @@ ${JSON.stringify(input.dossier, null, 2)}
 FIT ANALYSIS:
 ${JSON.stringify(input.fit, null, 2)}
 
+CANDIDATE OBSERVATIONS (what they noticed using the product / reading public material):
+${input.observations.length ? input.observations.map((o, i) => `${i + 1}. ${o}`).join("\n") : "none recorded yet"}
+
+If observations are listed, ground your tasks in them and cite the specific observation in each task's "why".
+If none are listed, suggest a research task that produces observations instead of a build task.
+
 Return JSON with exactly these fields:
 {
   "tasks": [
@@ -141,7 +254,7 @@ Return JSON with exactly these fields:
       "title": "string",
       "type": "build" | "distribution" | "research",
       "effort": "30 min" | "1-2 hrs" | "half day" | "a day",
-      "why": "why this specific task builds trust for THIS company",
+      "why": "the real evidence (observation, issue, or missing proof) this task responds to, and why it builds trust for THIS company",
       "output": "the concrete, linkable/quotable outcome"
     }
   ]

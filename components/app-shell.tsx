@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   KeyRound,
+  LogOut,
   Moon,
   Radar,
   Settings2,
   Sun,
   X,
 } from "lucide-react";
+import { signOutAction } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -181,15 +183,24 @@ function AISettings({ envConfigured }: { envConfigured: boolean }) {
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  email,
+}: {
+  children: ReactNode;
+  email: string | null;
+}) {
   const pathname = usePathname();
   const { state, updateProfile } = useScout();
   const [envConfigured, setEnvConfigured] = useState(false);
+  const signedIn = Boolean(email);
 
   useEffect(() => {
+    if (!signedIn) return;
     let cancelled = false;
     fetch("/api/profile")
-      .then((res) => res.json().catch(() => null))
+      // Guard on res.ok: a 401 body would otherwise be merged into the profile.
+      .then((res) => (res.ok ? res.json().catch(() => null) : null))
       .then((data) => {
         if (!cancelled && data && typeof data === "object") {
           updateProfile(data);
@@ -201,12 +212,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [updateProfile]);
+  }, [updateProfile, signedIn]);
 
   useEffect(() => {
+    if (!signedIn) return;
     let cancelled = false;
     fetch("/api/ai")
-      .then((res) => res.json().catch(() => null))
+      .then((res) => (res.ok ? res.json().catch(() => null) : null))
       .then((data) => {
         if (!cancelled && data && typeof data.configured === "boolean") {
           setEnvConfigured(data.configured);
@@ -218,7 +230,19 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [signedIn]);
+
+  // The login page renders bare: no nav, no settings, nothing that assumes a
+  // session. It is the one route reachable while signed out.
+  if (pathname === "/login") {
+    return (
+      <div className="flex min-h-dvh flex-col">
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   const aiConfigured = Boolean(state.ai.apiKey.trim()) || envConfigured;
 
@@ -273,6 +297,20 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             <ThemeToggle />
             <AISettings envConfigured={envConfigured} />
+            {email ? (
+              <form action={signOutAction}>
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  title={`Signed in as ${email} — sign out`}
+                >
+                  <LogOut className="size-4" />
+                  <span className="sr-only">Sign out</span>
+                </Button>
+              </form>
+            ) : null}
           </div>
         </div>
       </header>

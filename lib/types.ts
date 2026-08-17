@@ -165,7 +165,7 @@ export interface Company {
   followUpDate: string;
 }
 
-export type ResearchSourceKind = "website" | "job" | "search";
+export type ResearchSourceKind = "website" | "job" | "search" | "page";
 
 export interface ResearchSource {
   url: string;
@@ -184,6 +184,22 @@ export interface ResearchSearchResult {
   author?: string;
 }
 
+export interface ResearchPage {
+  url: string;
+  title: string;
+  text: string;
+}
+
+export interface PersonContact {
+  name: string;
+  role?: string;
+  email?: string;
+  linkedin?: string;
+  x?: string;
+  github?: string;
+  sourceUrl?: string;
+}
+
 export interface ResearchMaterial {
   companyName: string;
   websiteUrl: string;
@@ -191,6 +207,9 @@ export interface ResearchMaterial {
   websiteText: string;
   jobText: string;
   searchResults: ResearchSearchResult[];
+  pages: ResearchPage[];
+  people: PersonContact[];
+  observations: string[];
   sources: ResearchSource[];
   generatedAt: number;
 }

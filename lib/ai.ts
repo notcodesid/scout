@@ -5,6 +5,7 @@ import type {
   EvidenceProfile,
   FitAnalysis,
   OutreachPack,
+  PersonContact,
   ProofTask,
   QualityFlag,
   QualityReport,
@@ -17,6 +18,8 @@ import {
   FIT_SYSTEM,
   outreachUser,
   OUTREACH_SYSTEM,
+  peopleUser,
+  PEOPLE_SYSTEM,
   proofUser,
   PROOF_SYSTEM,
   qualityUser,
@@ -34,11 +37,21 @@ const DEFAULT_MODEL = "gemini-3.5-flash";
 
 function parseJSON<T>(text: string): T | null {
   const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
-  try {
-    return JSON.parse(cleaned) as T;
-  } catch {
-    // fall through to balanced-brace extraction
-  }
+  const tryParse = (candidate: string): T | null => {
+    try {
+      return JSON.parse(candidate) as T;
+    } catch {
+      // Llama-family models often emit trailing commas; repair and retry.
+      const repaired = candidate.replace(/,\s*([}\]])/g, "$1");
+      try {
+        return JSON.parse(repaired) as T;
+      } catch {
+        return null;
+      }
+    }
+  };
+  const direct = tryParse(cleaned);
+  if (direct) return direct;
   const start = cleaned.indexOf("{");
   if (start === -1) return null;
   let depth = 0;
@@ -57,11 +70,9 @@ function parseJSON<T>(text: string): T | null {
     else if (ch === "}") {
       depth--;
       if (depth === 0) {
-        try {
-          return JSON.parse(cleaned.slice(start, i + 1)) as T;
-        } catch {
-          return null;
-        }
+        const candidate = cleaned.slice(start, i + 1);
+        const parsed = tryParse(candidate);
+        if (parsed) return parsed;
       }
     }
   }
@@ -144,6 +155,18 @@ function normalizeTask(
   };
 }
 
+function normalizePerson(p: Partial<PersonContact>): PersonContact {
+  return {
+    name: asString(p.name),
+    role: asString(p.role),
+    email: asString(p.email),
+    linkedin: asString(p.linkedin),
+    x: asString(p.x),
+    github: asString(p.github),
+    sourceUrl: asString(p.sourceUrl),
+  };
+}
+
 function normalizeOutreach(o: Partial<OutreachPack>): OutreachPack {
   return {
     email: asString(o.email),
@@ -170,6 +193,23 @@ function normalizeQuality(q: Partial<QualityReport>): QualityReport {
   };
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Free tiers hit rate limits (429) constantly. Extract the suggested wait time
+// from the provider's message or Retry-After header, then retry a couple times
+// with backoff instead of failing the whole flow.
+function retryDelayFrom(body: string, retryAfter: string | null): number {
+  const match = body.match(/try again in (\d+(?:\.\d+)?)\s*s/i);
+  if (match) return Math.ceil(parseFloat(match[1]) * 1000);
+  if (retryAfter) {
+    const seconds = parseInt(retryAfter, 10);
+    if (!Number.isNaN(seconds)) return seconds * 1000;
+  }
+  return 0;
+}
+
 async function callProvider(
   baseUrl: string,
   apiKey: string,
@@ -178,29 +218,44 @@ async function callProvider(
   user: string
 ): Promise<string> {
   const base = (baseUrl || DEFAULT_BASE).replace(/\/?$/, "/");
-  const res = await fetch(`${base}chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: model || DEFAULT_MODEL,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      temperature: 0.4,
-    }),
-  });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`AI provider error (${res.status}): ${detail.slice(0, 300)}`);
+  const maxAttempts = 3;
+  let lastDetail = "";
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const res = await fetch(`${base}chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: model || DEFAULT_MODEL,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        temperature: 0.4,
+      }),
+    });
+    if (res.status === 429 && attempt < maxAttempts - 1) {
+      const body = await res.text().catch(() => "");
+      lastDetail = body.slice(0, 300);
+      const suggested = retryDelayFrom(body, res.headers.get("retry-after"));
+      const delay = suggested || Math.min(3000 * 2 ** attempt, 15000);
+      await sleep(delay);
+      continue;
+    }
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      throw new Error(
+        `AI provider error (${res.status}): ${(detail || lastDetail).slice(0, 300)}`
+      );
+    }
+    const data = await res.json();
+    const content: string | undefined = data?.choices?.[0]?.message?.content;
+    if (!content) throw new Error("AI provider returned no content");
+    return content;
   }
-  const data = await res.json();
-  const content: string | undefined = data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error("AI provider returned no content");
-  return content;
+  throw new Error(`AI provider error (429): ${lastDetail}`);
 }
 
 async function generateJSON<T>(opts: {
@@ -283,17 +338,20 @@ function dossierFallback(
   const sources = material?.sources.length
     ? material.sources.map((s) => s.url)
     : [company.url, company.jobUrl].filter(Boolean);
+  const team = material?.people.length
+    ? material.people.map((p) => (p.role ? `${p.name} — ${p.role}` : p.name))
+    : [];
   return {
     companyName: material?.companyName || host.charAt(0).toUpperCase() + host.slice(1),
     oneLiner: "Sample: what this company does, in one sentence.",
     problem: "Sample: the real problem they solve and for whom.",
     users: "Sample: who uses it and why.",
     differentiation: "Sample: how they differ from alternatives.",
-    team: [],
+    team,
     role: "Sample: what the role or company likely needs.",
     likelyNeeds: [
-      "Sample [inferred]: shipping a first feature fast",
-      "Sample [inferred]: turning user feedback into product direction",
+      "Sample: shipping a first feature fast",
+      "Sample: turning user feedback into product direction",
     ],
     competitors: [],
     sources,
@@ -334,28 +392,41 @@ function fitFallback(
 function tasksFallback(
   profile: EvidenceProfile,
   dossier: Dossier,
-  fit: FitAnalysis
+  fit: FitAnalysis,
+  observations: string[]
 ): Partial<Omit<ProofTask, "id" | "done" | "evidenceLink" | "notes">>[] {
+  if (!observations.length) {
+    return [
+      normalizeTask({
+        title: `Walk through ${dossier.companyName}'s product and record what you actually hit`,
+        type: "research",
+        effort: "30 min",
+        why: "No real observation yet — a build task without observed need is a guess. This produces the evidence to build from.",
+        output:
+          "A short observation list: 3-5 concrete frictions, surprises, or gaps you found, with screenshots.",
+      }),
+    ];
+  }
   return [
     normalizeTask({
-      title: `Walk through ${dossier.companyName}'s onboarding and write up one real friction point`,
+      title: `Build the smallest artifact that fixes one of your observations: "${observations[0]}"`,
       type: "research",
       effort: "1-2 hrs",
-      why: "Shows you actually used the product and can spot problems, not just describe it.",
-      output: "A short post (link) or a one-page doc with screenshots and one suggested fix.",
+      why: `Responds to what you actually observed: ${observations[0]}. Proof of use and user-thinking in one.`,
+      output: "A one-page writeup or short post (link) naming the friction and one suggested fix.",
     }),
     normalizeTask({
-      title: "Build a small artifact that solves a problem adjacent to theirs",
+      title: `Build a small artifact that directly addresses your observation`,
       type: "build",
       effort: "half day",
-      why: "Proof of execution: shipped something real, linkable, related to their space.",
-      output: "A live link or repo with a README that states the problem and outcome.",
+      why: "Proof of execution tied to a real, observed need rather than an inferred one.",
+      output: "A live link or repo with a README that states the observation, what you built, and the outcome.",
     }),
     normalizeTask({
-      title: "Share the artifact in a relevant community and collect feedback",
+      title: "Share the artifact with people who feel the same friction and collect feedback",
       type: "distribution",
       effort: "30 min",
-      why: "Shipping without distribution is incomplete signal. Real users matter more than polish.",
+      why: "Real need is confirmed by real users, not by you alone. Feedback also strengthens the outreach.",
       output: "The post link plus 3-5 comments or user reactions you can quote.",
     }),
   ];
@@ -460,6 +531,7 @@ export function suggestProofTasks(opts: {
   profile: EvidenceProfile;
   dossier: Dossier;
   fit: FitAnalysis;
+  observations: string[];
   config?: AIConfig;
 }): Promise<
   AIResult<{
@@ -470,9 +542,16 @@ export function suggestProofTasks(opts: {
     tasks: Partial<Omit<ProofTask, "id" | "done" | "evidenceLink" | "notes">>[];
   }>({
     system: PROOF_SYSTEM,
-    user: proofUser({ profile: opts.profile, dossier: opts.dossier, fit: opts.fit }),
+    user: proofUser({
+      profile: opts.profile,
+      dossier: opts.dossier,
+      fit: opts.fit,
+      observations: opts.observations,
+    }),
     config: opts.config,
-    fallback: () => ({ tasks: tasksFallback(opts.profile, opts.dossier, opts.fit) }),
+    fallback: () => ({
+      tasks: tasksFallback(opts.profile, opts.dossier, opts.fit, opts.observations),
+    }),
   }).then((res) => ({
     data: { tasks: res.data.tasks.map(normalizeTask) },
     mock: res.mock,
@@ -536,6 +615,23 @@ export async function buildDossierServer(opts: {
   );
 }
 
+export async function extractPeopleServer(opts: {
+  companyName: string;
+  material: ResearchMaterial;
+}): Promise<PersonContact[]> {
+  const res = await generateJSONServer<{
+    people?: Partial<PersonContact>[];
+  }>({
+    system: PEOPLE_SYSTEM,
+    user: peopleUser({
+      companyName: opts.companyName,
+      material: opts.material,
+    }),
+    fallback: () => ({ people: [] }),
+  });
+  return (res.people ?? []).map(normalizePerson).filter((p) => p.name.trim());
+}
+
 export async function analyzeFitServer(opts: {
   profile: EvidenceProfile;
   dossier: Dossier;
@@ -553,13 +649,21 @@ export async function suggestProofTasksServer(opts: {
   profile: EvidenceProfile;
   dossier: Dossier;
   fit: FitAnalysis;
+  observations: string[];
 }): Promise<Omit<ProofTask, "id" | "done" | "evidenceLink" | "notes">[]> {
   const res = await generateJSONServer<{
     tasks: Partial<Omit<ProofTask, "id" | "done" | "evidenceLink" | "notes">>[];
   }>({
     system: PROOF_SYSTEM,
-    user: proofUser({ profile: opts.profile, dossier: opts.dossier, fit: opts.fit }),
-    fallback: () => ({ tasks: tasksFallback(opts.profile, opts.dossier, opts.fit) }),
+    user: proofUser({
+      profile: opts.profile,
+      dossier: opts.dossier,
+      fit: opts.fit,
+      observations: opts.observations,
+    }),
+    fallback: () => ({
+      tasks: tasksFallback(opts.profile, opts.dossier, opts.fit, opts.observations),
+    }),
   });
   return res.tasks.map(normalizeTask);
 }

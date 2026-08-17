@@ -6,6 +6,7 @@ import {
   buildDossierServer,
   checkQualityServer,
   draftOutreachServer,
+  extractPeopleServer,
   hasAIKey,
   suggestProofTasksServer,
 } from "@/lib/ai";
@@ -18,11 +19,17 @@ import {
   setResearch,
   updateCompanyScalars,
 } from "@/lib/companies";
+import { requireUser } from "@/lib/auth";
 import { getProfile } from "@/lib/profile";
-import { runCompanyResearch } from "@/lib/research";
-import type { Company, ProofTask, ResearchStep } from "@/lib/types";
+import { enrichPeople, runCompanyResearch } from "@/lib/research";
+import type { Company, PersonContact, ProofTask, ResearchStep } from "@/lib/types";
 
+// Auth gate + load, in that order. Server actions are public HTTP endpoints —
+// proxy.ts only redirects browsers, so anything reachable here must check the
+// session itself. Actions that do not load a company call requireUser()
+// directly instead.
 async function requireCompany(id: string): Promise<Company> {
+  await requireUser();
   const company = await getCompany(id);
   if (!company) throw new Error("Company not found");
   return company;
@@ -34,6 +41,7 @@ export async function addCompanyAction(input: {
   jobUrl: string;
   notes: string;
 }) {
+  await requireUser();
   const company = await createCompany({ ...input, contacts: [] });
   revalidatePath("/");
   return company;
@@ -45,6 +53,7 @@ export async function updateCompanyAction(
     Pick<Company, "name" | "url" | "jobUrl" | "notes" | "contacts" | "followUpDate">
   >
 ) {
+  await requireUser();
   const company = await updateCompanyScalars(id, patch);
   revalidatePath("/");
   revalidatePath(`/companies/${id}`);
@@ -52,6 +61,7 @@ export async function updateCompanyAction(
 }
 
 export async function deleteCompanyAction(id: string) {
+  await requireUser();
   await deleteCompany(id);
   revalidatePath("/");
 }
@@ -61,6 +71,7 @@ export async function saveArtifactAction(
   kind: "dossier" | "fit" | "outreach" | "quality",
   value: unknown
 ) {
+  await requireUser();
   const company = await setArtifact(id, kind, value);
   revalidatePath(`/companies/${id}`);
   return company;
@@ -70,6 +81,7 @@ export async function saveProofTasksAction(
   id: string,
   tasks: Omit<ProofTask, "id">[]
 ) {
+  await requireUser();
   const company = await replaceProofTasks(id, tasks);
   revalidatePath(`/companies/${id}`);
   return company;
@@ -106,14 +118,60 @@ export async function researchCompanyAction(id: string) {
     );
   }
 
-  await setResearch(id, material);
+  let people: PersonContact[] = [];
+  let peopleError = "";
+  try {
+    people = await enrichPeople(
+      await extractPeopleServer({
+        companyName: material.companyName,
+        material,
+      }),
+      material.companyName,
+      [
+        material.websiteText,
+        material.jobText,
+        ...material.pages.map((p) => p.text),
+      ]
+    );
+  } catch (err) {
+    peopleError = err instanceof Error ? err.message : "Unknown error";
+  }
+  const materialWithPeople = {
+    ...material,
+    people,
+    observations: company.research?.observations ?? [],
+  };
+  steps.push(
+    peopleError
+      ? {
+          key: "people",
+          label: "People extraction skipped",
+          status: "error" as const,
+          detail: peopleError.slice(0, 200),
+        }
+      : {
+          key: "people",
+          label: `Found ${people.length} team member${people.length === 1 ? "" : "s"}`,
+          status: people.length ? ("ok" as const) : ("skipped" as const),
+          detail: people.length
+            ? `${people.filter((p) => p.email).length} emails · ${people.filter((p) => p.linkedin).length} LinkedIn · ${people.filter((p) => p.x).length} X`
+            : "No names extracted from the material",
+        }
+  );
+  await setResearch(id, materialWithPeople);
   const profile = await getProfile();
   const dossier = await buildDossierServer({
     company,
     profile,
-    material,
+    material: materialWithPeople,
   });
-  const updated = await setArtifact(id, "dossier", dossier);
+  const dossierWithTeam = dossier.team.length
+    ? dossier
+    : {
+        ...dossier,
+        team: people.map((p) => (p.role ? `${p.name} — ${p.role}` : p.name)),
+      };
+  const updated = await setArtifact(id, "dossier", dossierWithTeam);
   revalidatePath(`/companies/${id}`);
   return { company: updated, steps, mock: !hasAIKey() };
 }
@@ -138,6 +196,7 @@ export async function suggestProofTasksAction(id: string) {
     profile,
     dossier: company.dossier,
     fit: company.fit,
+    observations: company.research?.observations ?? [],
   });
   const next = [
     ...company.proofTasks,
@@ -146,6 +205,17 @@ export async function suggestProofTasksAction(id: string) {
   const updated = await replaceProofTasks(id, next);
   revalidatePath(`/companies/${id}`);
   return { company: updated, mock: !hasAIKey() };
+}
+
+export async function saveObservationsAction(id: string, observations: string[]) {
+  const company = await requireCompany(id);
+  if (!company.research) return null;
+  const updated = await setResearch(id, {
+    ...company.research,
+    observations,
+  });
+  revalidatePath(`/companies/${id}`);
+  return updated;
 }
 
 export async function draftOutreachAction(id: string) {
