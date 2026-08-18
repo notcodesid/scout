@@ -1,0 +1,25 @@
+# Scout runs on hosted Supabase Postgres — this local instance is NOT needed to
+# run the app. It exists only to author new migrations: Supabase won't let
+# Prisma create the shadow database that `prisma migrate dev` requires. See the
+# "Writing new migrations" section in README.md.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: scout-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: scout
+      POSTGRES_PASSWORD: scout
+      POSTGRES_DB: scout
+    ports:
+      - "5433:5432"
+    volumes:
+      - scout_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scout -d scout"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  scout_pgdata:

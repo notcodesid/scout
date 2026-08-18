@@ -1,122 +1,226 @@
-# Scout 🚀
+# Scout
 
-Scout is an early-stage project that helps engineers discover Y Combinator startups and reach out to founders with highly personalized cold emails — all from one place.
+**Manual Job Application Copilot.** Apply to fewer companies, but apply like someone who
+actually understands the company and can prove they can help.
 
-The goal is simple: reduce randomness in cold outreach and help engineers connect with founders in a more thoughtful, targeted way.
+Scout turns Aditya Thakur's essay
+[*A Guide to Getting Hired at Early-Stage Startups*](https://adityathakurgg.substack.com/p/a-guide-to-getting-hired)
+into an executable workflow:
 
----
+1. **Evidence profile** — every project stored as work + context + outcome, plus "did anyone care?"
+   (users, feedback, distribution).
+2. **Research dossier** — paste a company URL and job post; get a sourced brief. You verify it
+   before moving on.
+3. **Fit analysis** — strong matches, weak matches, missing proof, and an honest
+   apply / wait / skip verdict.
+4. **Proof task** — one small, company-specific piece of work that produces a linkable outcome.
+   Outreach stays locked until it's done.
+5. **Outreach** — short email / LinkedIn / X drafts with placeholders only you can fill.
+6. **Quality check** — scores the draft against the article's red flags: no links, buzzwords,
+   AI-slop, generic praise, length.
 
-## Problem
+The pipeline is gated on purpose. You cannot reach outreach without verified research, a fit
+verdict, and at least one completed proof task. That gate *is* the product. AI generation runs
+server-side against your DB profile, using the key from `.env.local` (no browser config needed).
 
-Getting an internship at a YC startup is harder than it should be.
+## Stack
 
-- Startup information is scattered across multiple platforms
-- Cold emails require significant research and personalization
-- Generic outreach has low response rates
-- Founders often receive irrelevant or low-quality applications
+- Next.js (App Router) + TypeScript + Tailwind CSS v4
+- Everything (profile + company pipeline) lives in Postgres, hosted on Supabase.
+- AI via any OpenAI-compatible provider, defaulting to Groq's free tier.
+- Prisma ORM with a full user-domain schema (links, skills, projects, experience, education).
 
-This creates friction on both sides.
+## Database
 
----
+Scout runs on a hosted **Supabase** Postgres. Two connection strings are needed,
+both from Project Settings → Database → Connection string:
 
-## Solution
+| Var | Pooler | Port | Used by |
+| --- | --- | --- | --- |
+| `DATABASE_URL` | Transaction | 6543 | the app at runtime |
+| `DIRECT_URL` | Session | 5432 | `prisma migrate` |
 
-Scout solves this by combining **startup discovery** with **intent-based, personalized outreach**.
+They are split because the transaction pooler multiplexes statements across
+backends, which breaks the advisory locks migrations rely on. Both pooler hosts
+are IPv4; the `db.<ref>.supabase.co` direct host is **IPv6-only** and will fail
+from Vercel and most CI runners.
 
-- Browse YC startups with structured company information
-- Engineers explicitly choose which startups they want to apply to
-- Cold emails are generated with context (company, role, and resume)
-- Outreach is **targeted, not broadcasted**
-
-Quality over volume is the core principle.
-
----
-
-## How Response Rate Is Handled
-
-Scout focuses on improving response rates through:
-
-- Highly personalized emails instead of mass outreach
-- Clear intent signaling (engineers select specific startups)
-- Continuous iteration based on open and reply signals (future)
-
-Early versions prioritize low volume and high relevance to avoid spam.
-
----
-
-## Resume Filtering Philosophy
-
-Resumes are not blindly shared.
-
-- Founders only receive applications from engineers who selected their company
-- Outreach is role-specific and skill-aware
-- Initial filtering is done by relevance, not automation
-
-As the product evolves, lightweight filters (role, skills, availability) can be added to help founders quickly assess fit.
-
----
-
-## Current Status
-
-Scout is currently in **active development** and experimentation.
-
-- Early UI and data pipelines are in place
-- Outreach flows are being tested manually
-- Feedback-driven iteration is the main focus
-
-This is not a finished product — it is an experiment built in public.
-
----
-
-## Local Jobs API
-
-The jobs page can run without Supabase for local development.
+Keep `?uselibpqcompat=true&sslmode=require` on both strings. It means "encrypt,
+don't verify the certificate". Without `uselibpqcompat`, node-postgres v8 reads
+`sslmode=require` as `verify-full` and rejects Supabase's self-signed chain —
+and with no `sslmode` at all the connection is silently **unencrypted**.
 
 ```bash
+npx prisma generate           # generates the client into generated/prisma
+npx prisma migrate deploy     # applies existing migrations to Supabase
+```
+
+`generated/` is gitignored; fresh clones run `npx prisma generate`.
+
+### Writing new migrations
+
+Supabase won't let Prisma create the shadow database that `migrate dev` needs,
+so author migrations against the local Docker Postgres, then deploy them:
+
+```bash
+docker compose up -d                                             # localhost:5433
+DATABASE_URL=$LOCAL DIRECT_URL=$LOCAL npx prisma migrate dev      # author
+npx prisma migrate deploy                                         # ship to Supabase
+```
+
+where `LOCAL=postgresql://scout:scout@localhost:5433/scout`. That is the only
+remaining use for `docker-compose.yml`.
+
+**Any new table needs RLS.** Supabase exposes everything in the `public` schema
+over PostgREST, where the `anon` role — reachable by anyone holding the
+publishable key — gets SELECT/INSERT/UPDATE/DELETE by default. Prisma connects
+as `postgres`, which has `BYPASSRLS`, so enabling row-level security with **no
+policies** is a deny-all for the public API and a no-op for the app. Every
+migration that adds a table must end with:
+
+```sql
+ALTER TABLE "NewTable" ENABLE ROW LEVEL SECURITY;
+```
+
+Verify with `select relname, relrowsecurity from pg_class where
+relnamespace='public'::regnamespace and relkind='r'` — every row must be `true`.
+
+## Run it
+
+```bash
+npm install
 npm run dev
 ```
 
-This starts:
+Open http://localhost:3000.
 
-- Vite on `http://localhost:8080`
-- A local jobs API on `http://localhost:8787`
-- A JSON cache at `.scout/jobs-cache.json`
+## Auth (Google sign-in)
 
-Import sources dynamically:
+Scout is a single-person tool, so auth is a **gate**, not multi-tenancy: there is
+still one profile and one pipeline. Any Google account can complete the OAuth
+flow, so the account must also appear in `AUTH_ALLOWED_EMAILS` — that allowlist
+is the real gate, and it **fails closed** (empty means nobody gets in).
 
-```bash
-curl -X POST http://localhost:8787/api/job-sources/import \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sources": [
-      { "companyName": "Linear", "careersUrl": "https://jobs.ashbyhq.com/Linear" },
-      { "companyName": "Vercel", "careersUrl": "https://boards.greenhouse.io/vercel" }
-    ]
-  }'
-```
+One-time setup:
 
-Sync imported sources:
+1. **Google Cloud** → APIs & Services → Credentials → *Create OAuth client ID*
+   (Web application). Set the authorized redirect URI to the callback Supabase
+   gives you: `https://<project-ref>.supabase.co/auth/v1/callback`.
+2. **Supabase** → Authentication → Providers → **Google**: enable it and paste
+   the client ID and secret. They live in Supabase, never in this repo.
+3. **Supabase** → Authentication → URL Configuration → add your redirect URLs:
+   `http://localhost:3000/auth/callback` and the deployed equivalent.
+4. Set `AUTH_ALLOWED_EMAILS` in `.env.local` to your Google address
+   (comma-separated for more than one), then restart the dev server.
 
-```bash
-curl -X POST http://localhost:8787/api/jobs/sync
-```
+### How it is enforced
 
-The app intentionally does not ship with hardcoded company sources. Jobs appear after sources are imported and synced.
+Three layers, because the outer one is not a security boundary:
 
----
+| Layer | File | Role |
+| --- | --- | --- |
+| Optimistic redirect | [`proxy.ts`](proxy.ts) | Bounces signed-out browsers to `/login` and refreshes the Supabase token. Convenience only. |
+| Data Access Layer | [`lib/auth.ts`](lib/auth.ts) | `requireUser()` — the real gate. Called by every page, server action, and route handler. |
+| Allowlist | `AUTH_ALLOWED_EMAILS` | Checked in the OAuth callback *and* on every request, so revoking access takes effect immediately. |
 
-## Vision
+Server actions are public HTTP endpoints — `proxy.ts` only redirects browsers,
+so **every new server action must call `requireUser()` itself**. JSON routes
+call `requireUserJson()` and return 401 instead of redirecting. `lib/auth.ts`
+uses `getUser()` rather than `getSession()`: `getSession()` only decodes a
+client-controlled cookie and must never drive an authorization decision.
 
-Scout aims to become the place where:
+## Onboarding
 
-- Engineers discover founder-led opportunities
-- Founders receive fewer but better applications
-- Cold outreach becomes intentional, human, and effective
+First sign-in lands on `/onboarding`, a three-step flow. Every page except
+`/onboarding` itself calls `requireOnboardedUser()`, so an unfinished profile
+cannot reach the pipeline.
 
----
+1. **How can we reach you?** — name, optional phone with a dial-code picker,
+   LinkedIn, and an "I don't have a LinkedIn account" escape hatch.
+2. **Add your resume** — PDF or `.docx`, 10MB max. The file is parsed to text
+   server-side ([`lib/resume.ts`](lib/resume.ts): `unpdf` for PDF, `mammoth` for
+   Word), then an AI pass ([`parseResumeServer`](lib/ai.ts)) extracts projects,
+   experience, education, skills, links, and what they're looking for. Step 2's
+   copy adapts based on whether LinkedIn was given, and the resume becomes
+   **required** when it wasn't.
+3. **Show us your work** — GitHub, site, research, X, plus arbitrary extra
+   links. Pre-filled from whatever the resume revealed, so this is a
+   confirmation step rather than retyping. "Continue" stamps `onboardedAt`.
 
-## Disclaimer
+Notes on behaviour worth knowing:
 
-Scout is an independent project and is **not affiliated with Y Combinator**.
+- **Hand-typed values win.** Re-uploading a resume replaces the parsed
+  relations (projects, skills, education, experience) but never overwrites a
+  field the user filled in themselves.
+- **The binary is not stored.** Only the extracted text (`resumeText`) and the
+  filename are kept — there is no storage bucket to configure.
+- **Scanned PDFs fail loudly.** A PDF with no text layer produces a clear error
+  rather than a silently empty profile, as does a missing AI key.
 
-YC and Y Combinator are trademarks of their respective owners.
+## Intake conversation
+
+After the three-step form, `/onboarding/intake` runs a chat-style intake that
+fills the **same evidence profile** `/profile` edits. `/profile` remains the
+place to review and correct; the conversation is how it gets populated.
+
+The questions are **derived from gaps, not a fixed list**.
+[`computeGaps()`](lib/intake.ts) diffs the profile after the resume pass and asks
+only for what is still missing, so the conversation stays short and never makes
+you retype what the resume already gave. In testing, a full resume left just six
+questions.
+
+The gap set mirrors the `/profile` sections — Basics, Position, Skills,
+Projects, Experience, Wrap up — and the highest-value ones are per-project:
+
+- **`project:<id>:users`** — "did anyone actually use it?" A resume states what
+  you built and almost never who used it, and Scout's fit and outreach stages
+  lean on exactly that. This is the question the conversation exists for.
+- **`project:<id>:outcome`** — only when the resume gave no visible result.
+
+Each answer is written straight back into the profile, so `/profile` reflects it
+immediately. Gap ids are `kind:...:field` with a variable number of middle
+segments (`project:<uuid>:users`, `experience:<company>:<role>:summary`), so the
+field is read off the **end** of the id — reading it by fixed position silently
+routes project answers into the wrong column.
+
+Shape is fixed even though the list is dynamic: sections, widget kinds, and
+option lists live in [`lib/intake-spec.ts`](lib/intake-spec.ts), and the model
+only writes wording. No AI key still works — every gap carries a scripted
+`fallbackQuestion`, and a phrasing failure falls back rather than blocking.
+
+**Acknowledgement cadence is decided in code, not by the model.** Asked to
+self-ration ("don't do this every turn"), it acknowledged on every single turn
+and settled on one stock phrase. [`lib/intake.ts`](lib/intake.ts) passes an
+explicit `acknowledge` flag on roughly one turn in three.
+
+Widgets are `single` and `multi` (with `1-9` then `QWERTY` hotkeys), `school`,
+and `text`. A free-text reply box is always available.
+
+Answers persist one row at a time (`IntakeAnswer`), so a refresh resumes at the
+same question. Answered ids are tracked separately from profile state, so a
+deliberately empty answer ("nobody used it yet") closes its question instead of
+being asked forever.
+
+Gate order: `onboardedAt` -> `intakeDoneAt` -> the pipeline, both enforced by
+`requireOnboardedUser()`.
+
+## AI setup
+
+Scout works in mock mode with no key (you get sample output to try the flow). To go live:
+
+1. Get a free key at https://aistudio.google.com/apikey
+2. Copy `.env.local.example` to `.env.local` and set `AI_API_KEY`
+3. Restart the dev server
+
+Or paste base URL / model / key into the **AI settings** panel in the app header (stored in your
+browser only).
+
+The same OpenAI-compatible protocol supports Groq, OpenRouter, DeepSeek, and OpenAI — just change
+`AI_BASE_URL` and `AI_MODEL`. Examples are in `.env.local.example`.
+
+## Design notes
+
+- The product optimizes for *better* applications, never *more*.
+- "Skip" is a feature: fit analysis protects your time.
+- Drafts are written to pass the quality check before you see them, and you edit them into
+  something only you could write.

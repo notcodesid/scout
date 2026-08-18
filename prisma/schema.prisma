@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Singleton user for now (no auth). The evidence profile is the raw material
+// every application draws from: work + context + outcome + "did anyone care?".
+model User {
+  id             String       @id @default(uuid())
+  name           String       @default("")
+  headline       String       @default("")
+  about          String       @default("")
+  email          String       @default("")
+  phone          String       @default("")
+  location       String       @default("")
+  timezone       String       @default("")
+  githubUsername String       @default("")
+  availability   String       @default("")
+  remote         Boolean      @default(false)
+  openToRelocate Boolean      @default(false)
+  targetRoles    String[]     @default([])
+  // Onboarding (see components/onboarding). phoneCountry keeps the dial-code
+  // picker on its original selection; phone stores the national number.
+  phoneCountry   String       @default("US")
+  linkedinUrl    String       @default("")
+  hasLinkedin    Boolean      @default(true)
+  lookingFor     String       @default("")
+  // The resume is parsed to text on upload and the text is what the extractor
+  // and later AI stages read. The binary is not retained.
+  resumeFileName String       @default("")
+  resumeText     String       @default("")
+  onboardedAt    DateTime?
+  // Conversational intake (/onboarding/intake). Answers persist one row at a
+  // time so a refresh resumes mid-conversation rather than restarting.
+  intakeDoneAt   DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  links          ProfileLink[]
+  skills         Skill[]
+  projects       Project[]
+  education      Education[]
+  experience     Experience[]
+  intake         IntakeAnswer[]
+}
+
+// One answered intake question. `value` is the structured answer (string or
+// string[]), `display` is the sentence shown in the chat bubble.
+model IntakeAnswer {
+  id        String   @id @default(uuid())
+  userId    String
+  field     String
+  section   String
+  question  String
+  value     Json
+  display   String   @default("")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, field])
+  @@index([userId])
+}
+
+// Resume, GitHub, portfolio, LinkedIn, X — anything an evaluator can click.
+model ProfileLink {
+  id        String   @id @default(uuid())
+  userId    String
+  label     String
+  url       String
+  sortOrder Int      @default(0)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Skill {
+  id        String @id @default(uuid())
+  userId    String
+  name      String
+  years     Int    @default(0)
+  sortOrder Int    @default(0)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+// The core proof. problem = context, work = what you built,
+// outcome = visible numbers, users = "did anyone actually care?".
+model Project {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  problem   String   @default("")
+  work      String   @default("")
+  outcome   String   @default("")
+  users     String   @default("")
+  links     String[] @default([])
+  tags      String[] @default([])
+  startDate String   @default("")
+  endDate   String   @default("")
+  sortOrder Int      @default(0)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Education {
+  id        String @id @default(uuid())
+  userId    String
+  school    String
+  degree    String @default("")
+  field     String @default("")
+  startDate String @default("")
+  endDate   String @default("")
+  notes     String @default("")
+  sortOrder Int    @default(0)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Experience {
+  id        String   @id @default(uuid())
+  userId    String
+  company   String
+  role      String
+  startDate String   @default("")
+  endDate   String   @default("")
+  current   Boolean  @default(false)
+  summary   String   @default("")
+  bullets   String[] @default([])
+  sortOrder Int      @default(0)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// One company the candidate is working through the pipeline.
+// Artifacts (dossier, fit, outreach, quality) are document-shaped, so they
+// live in JSONB; proof tasks are actionable rows with their own state.
+model Company {
+  id           String      @id @default(uuid())
+  name         String
+  url          String      @default("")
+  jobUrl       String      @default("")
+  notes        String      @default("")
+  contacts     String[]    @default([])
+  followUpDate String      @default("")
+  dossier      Json?
+  fit          Json?
+  outreach     Json?
+  quality      Json?
+  research     Json?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  proofTasks   ProofTask[]
+}
+
+model ProofTask {
+  id           String  @id @default(uuid())
+  companyId    String
+  title        String
+  type         String  @default("other")
+  effort       String  @default("1-2 hrs")
+  why          String  @default("")
+  output       String  @default("")
+  done         Boolean @default(false)
+  evidenceLink String  @default("")
+  notes        String  @default("")
+  sortOrder    Int     @default(0)
+  company      Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
