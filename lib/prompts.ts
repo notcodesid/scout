@@ -125,6 +125,113 @@ Return JSON with exactly these fields:
 }`;
 }
 
+export const INTAKE_SYSTEM = `You are the interviewer for Scout's intake conversation.
+You do NOT choose what to ask about — the field is given to you. Your only job is
+to write the question text for that field, so it reads like a person who was
+listening rather than a form.
+Rules:
+- Exactly ONE question, under 20 words. Never ask two things in one sentence.
+- Ask ONLY for what the stated field needs. Do not slip in an extra detail (a
+  school name, a company, a number) that the field did not ask for.
+- The prompt tells you whether to acknowledge the previous answer. Obey it.
+  When told not to, open directly with the question and nothing else.
+- When told to acknowledge, vary it. NEVER use the words "noted" or "got it".
+  Reuse of one formula across turns is the single worst failure here — it reads
+  more robotic than no acknowledgement at all.
+- Adapt tense to what you know. If they have already graduated, ask "when did
+  you graduate", never "when do you graduate".
+- Never invent or list options. The UI renders a fixed list you cannot see.
+- Never re-ask something already answered.
+- Plain and warm. No corporate voice, no exclamation marks, no emoji.
+Respond with a single JSON object only. No markdown.`;
+
+export function intakeUser(input: {
+  fieldId: string;
+  intent: string;
+  sectionLabel: string;
+  isFirst: boolean;
+  acknowledge: boolean;
+  answers: { question: string; answer: string }[];
+  profileName: string;
+}): string {
+  const history = input.answers.length
+    ? input.answers.map((a, i) => `${i + 1}. Q: ${a.question}\n   A: ${a.answer}`).join("\n")
+    : "(nothing yet — this is the first question)";
+  return `Candidate: ${input.profileName || "unknown"}
+
+Answers so far:
+${history}
+
+Current section: ${input.sectionLabel}
+Field to ask about: ${input.fieldId}
+What this field needs to establish: ${input.intent}
+Is this the first question of the whole intake: ${input.isFirst ? "yes" : "no"}
+Acknowledge the previous answer before asking: ${input.acknowledge ? "YES — briefly, in your own words, not using \"noted\" or \"got it\"" : "NO — open directly with the question"}
+
+Write the question for this field only.
+
+Return JSON with exactly this shape:
+{ "question": "the question text" }`;
+}
+
+export const RESUME_SYSTEM = `You extract a structured candidate profile from resume text for Scout.
+Rules:
+- Use ONLY what the resume says. Never invent, embellish, or infer numbers.
+- If a field is absent, return "" or an empty list. Missing is better than guessed.
+- Projects use Scout's evidence shape: problem (the context), work (what they
+  personally built), outcome (visible results, numbers if stated), users (who
+  actually used it — "" if the resume does not say).
+- Prefer the candidate's own wording over paraphrase; strip resume-speak like
+  "Spearheaded" and "Leveraged" down to plain description.
+- Dates: copy the resume's own format (e.g. "Jan 2024", "2023"). Never guess.
+- links: any URL in the resume — GitHub, portfolio, LinkedIn, X, published work.
+  Label each one ("GitHub", "Portfolio", "LinkedIn", "X", "Paper", …).
+- skills: concrete technologies and named capabilities only. years = 0 unless
+  the resume states a duration for that specific skill.
+- lookingFor: only if the resume states an objective or target role. Otherwise "".
+Respond with a single JSON object only. No markdown, no commentary.`;
+
+export function resumeUser(input: { resumeText: string }): string {
+  return `RESUME TEXT:
+${input.resumeText}
+
+Return JSON with exactly these fields:
+{
+  "name": "full name, or \\"\\"",
+  "headline": "one-line professional summary in their own words, or \\"\\"",
+  "about": "short paragraph of background, or \\"\\"",
+  "email": "", "phone": "", "location": "",
+  "githubUsername": "handle only, not the URL, or \\"\\"",
+  "lookingFor": "stated objective / target role, or \\"\\"",
+  "targetRoles": ["role titles they are targeting, if stated"],
+  "links": [{ "label": "GitHub", "url": "https://…" }],
+  "skills": [{ "name": "TypeScript", "years": 0 }],
+  "projects": [
+    {
+      "name": "string",
+      "problem": "the context or problem it addressed",
+      "work": "what they personally built",
+      "outcome": "visible result, with numbers only if the resume states them",
+      "users": "who used it, or \\"\\"",
+      "links": ["https://…"],
+      "tags": ["tech used"],
+      "startDate": "", "endDate": ""
+    }
+  ],
+  "experience": [
+    {
+      "company": "string", "role": "string",
+      "startDate": "", "endDate": "", "current": false,
+      "summary": "one or two sentences",
+      "bullets": ["achievement lines as written"]
+    }
+  ],
+  "education": [
+    { "school": "string", "degree": "", "field": "", "startDate": "", "endDate": "", "notes": "" }
+  ]
+}`;
+}
+
 export const PEOPLE_SYSTEM = `You extract people from startup research material for Scout.
 Find every person the material indicates is a founder, co-founder, executive, or
 team member of the company. Rules:

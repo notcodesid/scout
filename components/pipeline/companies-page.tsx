@@ -57,11 +57,11 @@ export function CompaniesPage({ companies }: { companies: Company[] }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <div className="max-w-xl">
+          <h1 className="text-3xl font-semibold tracking-tight">Pipeline</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             Fewer companies, better applications. One company at a time, through research, fit,
             proof, outreach, and quality.
           </p>
@@ -136,7 +136,7 @@ export function CompaniesPage({ companies }: { companies: Company[] }) {
 
       {companies.length === 0 ? (
         <EmptyState
-          icon={<Building2 className="size-8" />}
+          icon={<Building2 className="size-7" strokeWidth={1.5} />}
           title="No companies yet"
           description="Add the first company you want to apply to properly, then work it through the pipeline. The point is to go deep, not wide."
           action={
@@ -150,7 +150,10 @@ export function CompaniesPage({ companies }: { companies: Company[] }) {
           {companies.map((company) => {
             const doneTasks = company.proofTasks.filter((t) => t.done).length;
             return (
-              <Card key={company.id}>
+              <Card
+                key={company.id}
+                className="group border-transparent bg-card/70 shadow-none transition-colors hover:border-border hover:bg-card"
+              >
                 <CardContent className="flex items-center gap-4 p-4 sm:p-5">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -175,28 +178,34 @@ export function CompaniesPage({ companies }: { companies: Company[] }) {
                         </Badge>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Updated {timeAgo(company.updatedAt)}
+                    <p className="mt-1.5 font-mono text-[11px] text-muted-foreground">
+                      updated {timeAgo(company.updatedAt)}
                       {company.proofTasks.length > 0
                         ? ` · proof ${doneTasks}/${company.proofTasks.length}`
                         : ""}
                     </p>
                   </div>
+                  <div className="flex items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => remove(company.id)}
+                      aria-label={`Delete ${company.name}`}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
                   <Link
                     href={`/companies/${company.id}`}
                     aria-label={`Open ${company.name}`}
-                    className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+                    className={cn(
+                      buttonVariants({ variant: "ghost", size: "icon" }),
+                      "text-muted-foreground"
+                    )}
                   >
                     <ArrowRight />
                   </Link>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => remove(company.id)}
-                    aria-label={`Delete ${company.name}`}
-                  >
-                    <Trash2 />
-                  </Button>
                 </CardContent>
               </Card>
             );

@@ -72,6 +72,19 @@ export async function requireUser(): Promise<User> {
   redirect("/login");
 }
 
+// Signed in, but has the profile been set up? Pages that assume a profile call
+// this so a first-time user lands in /onboarding instead of an empty pipeline.
+// Kept out of proxy.ts deliberately: it is a DB read, and proxy runs on every
+// request including prefetches.
+export async function requireOnboardedUser(): Promise<User> {
+  const user = await requireUser();
+  const { isOnboarded } = await import("./onboarding");
+  if (!(await isOnboarded())) redirect("/onboarding");
+  const { isIntakeDone } = await import("./intake");
+  if (!(await isIntakeDone())) redirect("/onboarding/intake");
+  return user;
+}
+
 // Same check for JSON endpoints, which should 401 rather than redirect.
 export async function requireUserJson(): Promise<User | null> {
   const status = await getAuthStatus();

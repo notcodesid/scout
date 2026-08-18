@@ -69,6 +69,13 @@ export interface EvidenceProfile {
   location: string;
   email: string;
   phone: string;
+  phoneCountry: string;
+  linkedinUrl: string;
+  hasLinkedin: boolean;
+  lookingFor: string;
+  resumeFileName: string;
+  resumeText: string;
+  onboardedAt?: string | null;
   timezone: string;
   githubUsername: string;
   availability: string;

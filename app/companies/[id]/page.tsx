@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireOnboardedUser } from "@/lib/auth";
 import { getCompany } from "@/lib/companies";
 import { CompanyWorkspace } from "@/components/workspace/company-workspace";
 
@@ -10,7 +10,7 @@ export default async function CompanyPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireUser();
+  await requireOnboardedUser();
   const { id } = await params;
   const company = await getCompany(id);
   if (!company) notFound();

@@ -129,6 +129,81 @@ call `requireUserJson()` and return 401 instead of redirecting. `lib/auth.ts`
 uses `getUser()` rather than `getSession()`: `getSession()` only decodes a
 client-controlled cookie and must never drive an authorization decision.
 
+## Onboarding
+
+First sign-in lands on `/onboarding`, a three-step flow. Every page except
+`/onboarding` itself calls `requireOnboardedUser()`, so an unfinished profile
+cannot reach the pipeline.
+
+1. **How can we reach you?** — name, optional phone with a dial-code picker,
+   LinkedIn, and an "I don't have a LinkedIn account" escape hatch.
+2. **Add your resume** — PDF or `.docx`, 10MB max. The file is parsed to text
+   server-side ([`lib/resume.ts`](lib/resume.ts): `unpdf` for PDF, `mammoth` for
+   Word), then an AI pass ([`parseResumeServer`](lib/ai.ts)) extracts projects,
+   experience, education, skills, links, and what they're looking for. Step 2's
+   copy adapts based on whether LinkedIn was given, and the resume becomes
+   **required** when it wasn't.
+3. **Show us your work** — GitHub, site, research, X, plus arbitrary extra
+   links. Pre-filled from whatever the resume revealed, so this is a
+   confirmation step rather than retyping. "Continue" stamps `onboardedAt`.
+
+Notes on behaviour worth knowing:
+
+- **Hand-typed values win.** Re-uploading a resume replaces the parsed
+  relations (projects, skills, education, experience) but never overwrites a
+  field the user filled in themselves.
+- **The binary is not stored.** Only the extracted text (`resumeText`) and the
+  filename are kept — there is no storage bucket to configure.
+- **Scanned PDFs fail loudly.** A PDF with no text layer produces a clear error
+  rather than a silently empty profile, as does a missing AI key.
+
+## Intake conversation
+
+After the three-step form, `/onboarding/intake` runs a chat-style intake that
+fills the **same evidence profile** `/profile` edits. `/profile` remains the
+place to review and correct; the conversation is how it gets populated.
+
+The questions are **derived from gaps, not a fixed list**.
+[`computeGaps()`](lib/intake.ts) diffs the profile after the resume pass and asks
+only for what is still missing, so the conversation stays short and never makes
+you retype what the resume already gave. In testing, a full resume left just six
+questions.
+
+The gap set mirrors the `/profile` sections — Basics, Position, Skills,
+Projects, Experience, Wrap up — and the highest-value ones are per-project:
+
+- **`project:<id>:users`** — "did anyone actually use it?" A resume states what
+  you built and almost never who used it, and Scout's fit and outreach stages
+  lean on exactly that. This is the question the conversation exists for.
+- **`project:<id>:outcome`** — only when the resume gave no visible result.
+
+Each answer is written straight back into the profile, so `/profile` reflects it
+immediately. Gap ids are `kind:...:field` with a variable number of middle
+segments (`project:<uuid>:users`, `experience:<company>:<role>:summary`), so the
+field is read off the **end** of the id — reading it by fixed position silently
+routes project answers into the wrong column.
+
+Shape is fixed even though the list is dynamic: sections, widget kinds, and
+option lists live in [`lib/intake-spec.ts`](lib/intake-spec.ts), and the model
+only writes wording. No AI key still works — every gap carries a scripted
+`fallbackQuestion`, and a phrasing failure falls back rather than blocking.
+
+**Acknowledgement cadence is decided in code, not by the model.** Asked to
+self-ration ("don't do this every turn"), it acknowledged on every single turn
+and settled on one stock phrase. [`lib/intake.ts`](lib/intake.ts) passes an
+explicit `acknowledge` flag on roughly one turn in three.
+
+Widgets are `single` and `multi` (with `1-9` then `QWERTY` hotkeys), `school`,
+and `text`. A free-text reply box is always available.
+
+Answers persist one row at a time (`IntakeAnswer`), so a refresh resumes at the
+same question. Answered ids are tracked separately from profile state, so a
+deliberately empty answer ("nobody used it yet") closes its question instead of
+being asked forever.
+
+Gate order: `onboardedAt` -> `intakeDoneAt` -> the pipeline, both enforced by
+`requireOnboardedUser()`.
+
 ## AI setup
 
 Scout works in mock mode with no key (you get sample output to try the flow). To go live:

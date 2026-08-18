@@ -6,6 +6,9 @@ import type {
   FitAnalysis,
   OutreachPack,
   PersonContact,
+  ProfileEducation,
+  ProfileExperience,
+  Project,
   ProofTask,
   QualityFlag,
   QualityReport,
@@ -24,6 +27,10 @@ import {
   PROOF_SYSTEM,
   qualityUser,
   QUALITY_SYSTEM,
+  intakeUser,
+  INTAKE_SYSTEM,
+  resumeUser,
+  RESUME_SYSTEM,
 } from "./prompts";
 import { hostFromUrl } from "./utils";
 
@@ -613,6 +620,162 @@ export async function buildDossierServer(opts: {
       fallback: () => dossierFallback(opts.company, opts.material),
     })
   );
+}
+
+// Writes the wording for one intake question. The field itself is chosen by
+// lib/intake.ts, never by the model — see lib/intake-spec.ts for why.
+export async function nextIntakeQuestionServer(opts: {
+  fieldId: string;
+  intent: string;
+  sectionLabel: string;
+  isFirst: boolean;
+  acknowledge: boolean;
+  answers: { question: string; answer: string }[];
+  profileName: string;
+  fallbackQuestion: string;
+}): Promise<string> {
+  if (!hasAIKey()) return opts.fallbackQuestion;
+  try {
+    const res = await generateJSONServer<{ question?: unknown }>({
+      system: INTAKE_SYSTEM,
+      user: intakeUser(opts),
+      fallback: () => ({}),
+    });
+    const q = asString(res.question).trim();
+    return q || opts.fallbackQuestion;
+  } catch {
+    // A phrasing failure must never block the intake; the scripted wording is
+    // always a correct question for this field.
+    return opts.fallbackQuestion;
+  }
+}
+
+export interface ResumeExtract {
+  name: string;
+  headline: string;
+  about: string;
+  email: string;
+  phone: string;
+  location: string;
+  githubUsername: string;
+  lookingFor: string;
+  targetRoles: string[];
+  links: { label: string; url: string }[];
+  skills: { name: string; years: number }[];
+  projects: Omit<Project, "id">[];
+  experience: ProfileExperience[];
+  education: ProfileEducation[];
+}
+
+function normalizeResume(r: Record<string, unknown>): ResumeExtract {
+  const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+  const obj = (v: unknown): Record<string, unknown> =>
+    v && typeof v === "object" ? (v as Record<string, unknown>) : {};
+
+  return {
+    name: asString(r.name),
+    headline: asString(r.headline),
+    about: asString(r.about),
+    email: asString(r.email),
+    phone: asString(r.phone),
+    location: asString(r.location),
+    githubUsername: asString(r.githubUsername).replace(/^@/, "").replace(/^.*github\.com\//i, ""),
+    lookingFor: asString(r.lookingFor),
+    targetRoles: asStringArray(r.targetRoles),
+    links: arr(r.links)
+      .map((l) => {
+        const o = obj(l);
+        return { label: asString(o.label) || "Link", url: asString(o.url) };
+      })
+      .filter((l) => l.url),
+    skills: arr(r.skills)
+      .map((s) => {
+        const o = obj(s);
+        const years = Number(o.years);
+        return {
+          name: asString(o.name),
+          years: Number.isFinite(years) ? Math.max(0, Math.min(50, Math.round(years))) : 0,
+        };
+      })
+      .filter((s) => s.name),
+    projects: arr(r.projects)
+      .map((p) => {
+        const o = obj(p);
+        return {
+          name: asString(o.name),
+          problem: asString(o.problem),
+          work: asString(o.work),
+          outcome: asString(o.outcome),
+          users: asString(o.users),
+          links: asStringArray(o.links),
+          tags: asStringArray(o.tags),
+          startDate: asString(o.startDate),
+          endDate: asString(o.endDate),
+        };
+      })
+      .filter((p) => p.name),
+    experience: arr(r.experience)
+      .map((e) => {
+        const o = obj(e);
+        return {
+          company: asString(o.company),
+          role: asString(o.role),
+          startDate: asString(o.startDate),
+          endDate: asString(o.endDate),
+          current: Boolean(o.current),
+          summary: asString(o.summary),
+          bullets: asStringArray(o.bullets),
+        };
+      })
+      .filter((e) => e.company || e.role),
+    education: arr(r.education)
+      .map((e) => {
+        const o = obj(e);
+        return {
+          school: asString(o.school),
+          degree: asString(o.degree),
+          field: asString(o.field),
+          startDate: asString(o.startDate),
+          endDate: asString(o.endDate),
+          notes: asString(o.notes),
+        };
+      })
+      .filter((e) => e.school),
+  };
+}
+
+function emptyResumeExtract(): ResumeExtract {
+  return {
+    name: "",
+    headline: "",
+    about: "",
+    email: "",
+    phone: "",
+    location: "",
+    githubUsername: "",
+    lookingFor: "",
+    targetRoles: [],
+    links: [],
+    skills: [],
+    projects: [],
+    experience: [],
+    education: [],
+  };
+}
+
+// Resume text -> structured profile. Returns `mock: true` when no AI key is
+// configured, so the UI can tell the user nothing was actually extracted
+// instead of silently showing an empty profile as if the resume were blank.
+export async function parseResumeServer(
+  resumeText: string
+): Promise<{ data: ResumeExtract; mock: boolean }> {
+  if (!hasAIKey()) return { data: emptyResumeExtract(), mock: true };
+  const raw = await generateJSONServer<Record<string, unknown>>({
+    system: RESUME_SYSTEM,
+    user: resumeUser({ resumeText }),
+    fallback: () => ({}),
+  });
+  return { data: normalizeResume(raw), mock: false };
 }
 
 export async function extractPeopleServer(opts: {

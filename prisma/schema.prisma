@@ -23,6 +23,20 @@ model User {
   remote         Boolean      @default(false)
   openToRelocate Boolean      @default(false)
   targetRoles    String[]     @default([])
+  // Onboarding (see components/onboarding). phoneCountry keeps the dial-code
+  // picker on its original selection; phone stores the national number.
+  phoneCountry   String       @default("US")
+  linkedinUrl    String       @default("")
+  hasLinkedin    Boolean      @default(true)
+  lookingFor     String       @default("")
+  // The resume is parsed to text on upload and the text is what the extractor
+  // and later AI stages read. The binary is not retained.
+  resumeFileName String       @default("")
+  resumeText     String       @default("")
+  onboardedAt    DateTime?
+  // Conversational intake (/onboarding/intake). Answers persist one row at a
+  // time so a refresh resumes mid-conversation rather than restarting.
+  intakeDoneAt   DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   links          ProfileLink[]
@@ -30,6 +44,25 @@ model User {
   projects       Project[]
   education      Education[]
   experience     Experience[]
+  intake         IntakeAnswer[]
+}
+
+// One answered intake question. `value` is the structured answer (string or
+// string[]), `display` is the sentence shown in the chat bubble.
+model IntakeAnswer {
+  id        String   @id @default(uuid())
+  userId    String
+  field     String
+  section   String
+  question  String
+  value     Json
+  display   String   @default("")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, field])
+  @@index([userId])
 }
 
 // Resume, GitHub, portfolio, LinkedIn, X — anything an evaluator can click.

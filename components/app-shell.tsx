@@ -5,9 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   KeyRound,
-  LogOut,
   Moon,
-  Radar,
   Settings2,
   Sun,
   X,
@@ -232,12 +230,12 @@ export function AppShell({
     };
   }, [signedIn]);
 
-  // The login page renders bare: no nav, no settings, nothing that assumes a
-  // session. It is the one route reachable while signed out.
-  if (pathname === "/login") {
+  // Login and onboarding render bare: no nav, no settings, nothing that assumes
+  // a finished profile. Onboarding is a funnel — links out of it are exits.
+  if (pathname === "/login" || pathname.startsWith("/onboarding")) {
     return (
       <div className="flex min-h-dvh flex-col">
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 sm:py-14">
           {children}
         </main>
       </div>
@@ -248,14 +246,13 @@ export function AppShell({
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-4 px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <Radar className="size-5" />
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-7 px-4 sm:px-6">
+          <Link href="/" className="text-[15px] font-semibold tracking-tight">
             Scout
           </Link>
 
-          <nav className="flex items-center gap-1 overflow-x-auto" aria-label="Main">
+          <nav className="flex items-center gap-5 overflow-x-auto" aria-label="Main">
             {NAV.map((item) => {
               const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
               return (
@@ -263,8 +260,8 @@ export function AppShell({
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                    active ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                    "text-sm transition-colors",
+                    active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   {item.label}
@@ -273,49 +270,32 @@ export function AppShell({
             })}
           </nav>
 
-          <div className="ml-auto flex items-center gap-1">
-            <span
-              className={cn(
-                "hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-xs sm:inline-flex",
-                aiConfigured
-                  ? "bg-emerald-600/10 text-emerald-700 dark:text-emerald-400"
-                  : "bg-amber-600/10 text-amber-700 dark:text-amber-400"
-              )}
-              title={
-                aiConfigured
-                  ? "AI provider configured"
-                  : "Mock mode: add an API key in settings for real AI"
-              }
-            >
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  aiConfigured ? "bg-emerald-500" : "bg-amber-500"
-                )}
-              />
-              {aiConfigured ? "AI on" : "Mock"}
-            </span>
+          <div className="ml-auto flex items-center gap-3">
             <ThemeToggle />
             <AISettings envConfigured={envConfigured} />
             {email ? (
-              <form action={signOutAction}>
-                <Button
-                  type="submit"
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground"
-                  title={`Signed in as ${email} — sign out`}
+              <div className="flex items-center gap-3 pl-1">
+                <span
+                  className="hidden text-sm text-muted-foreground sm:inline"
+                  title={aiConfigured ? "AI provider configured" : "Mock mode"}
                 >
-                  <LogOut className="size-4" />
-                  <span className="sr-only">Sign out</span>
-                </Button>
-              </form>
+                  {email}
+                </span>
+                <form action={signOutAction}>
+                  <button
+                    type="submit"
+                    className="text-sm text-foreground transition-opacity hover:opacity-70"
+                  >
+                    Sign out
+                  </button>
+                </form>
+              </div>
             ) : null}
           </div>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 sm:py-14">
         {children}
       </main>
     </div>
