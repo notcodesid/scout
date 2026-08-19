@@ -30,12 +30,12 @@ export interface SectionSpec {
 }
 
 export const SECTIONS: SectionSpec[] = [
-  { id: "basics", label: "Basics" },
-  { id: "position", label: "Position" },
-  { id: "skills", label: "Skills" },
-  { id: "projects", label: "Projects" },
-  { id: "experience", label: "Experience" },
-  { id: "wrap-up", label: "Wrap up" },
+  { id: "basics", label: "basics" },
+  { id: "position", label: "position" },
+  { id: "skills", label: "skills" },
+  { id: "projects", label: "projects" },
+  { id: "experience", label: "experience" },
+  { id: "wrap-up", label: "wrap up" },
 ];
 
 // Hotkeys mirror builders.cv: digits first, then a QWERTY run once 1-9 is spent.

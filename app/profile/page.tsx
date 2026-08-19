@@ -1,11 +1,11 @@
 import { requireOnboardedUser } from "@/lib/auth";
 import { getProfile } from "@/lib/profile";
-import { ProfileWizard } from "@/components/profile/profile-wizard";
+import { ProfileView } from "@/components/profile/profile-view";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
   await requireOnboardedUser();
   const profile = await getProfile();
-  return <ProfileWizard initialProfile={profile} />;
+  return <ProfileView initialProfile={profile} />;
 }

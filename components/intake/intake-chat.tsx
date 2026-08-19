@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, CornerDownLeft, Square } from "lucide-react";
 import { answerIntakeAction } from "@/app/onboarding/intake/actions";
 import type { IntakeStep } from "@/lib/intake-spec";
@@ -13,6 +13,8 @@ const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+// Past this the composer scrolls internally, so it can never eat the transcript.
+const MAX_COMPOSER_PX = 160;
 const SCHOOL_STATUS = ["I'm a student", "Currently on leave", "Already graduated"];
 
 function years(): string[] {
@@ -47,10 +49,7 @@ function Sidebar({
 }) {
   const activeIdx = SECTIONS.findIndex((s) => s.id === activeSection);
   return (
-    <nav
-      className="sticky top-24 hidden self-start lg:block"
-      aria-label="Intake sections"
-    >
+    <nav aria-label="Intake sections">
       <ol className="space-y-3 font-mono text-sm">
         {SECTIONS.map((s, i) => {
           const done = answeredSections.includes(s.id);
@@ -85,7 +84,10 @@ function Sidebar({
 function Bubble({ text }: { text: string }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[80%] rounded-xl border bg-card px-4 py-2.5 text-sm shadow-sm">
+      {/* pre-wrap keeps the line breaks the user actually typed — without it a
+          bulleted answer collapses into one run-on paragraph. break-words stops
+          a long url or token from forcing the bubble past its max width. */}
+      <div className="max-w-[80%] whitespace-pre-wrap break-words rounded-xl border bg-card px-4 py-2.5 text-sm leading-relaxed lowercase shadow-sm">
         {text}
       </div>
     </div>
@@ -135,7 +137,7 @@ function OptionRow({
           />
         ) : null}
       </span>
-      <span className="flex-1">{label}</span>
+      <span className="flex-1 lowercase">{label}</span>
       {key ? (
         <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
           {key}
@@ -148,6 +150,12 @@ function OptionRow({
 export function IntakeChat({ initial }: { initial: IntakeStep }) {
   const router = useRouter();
   const [step, setStep] = useState<IntakeStep>(initial);
+  const [transcript, setTranscript] = useState<{ question: string; display: string }[]>(
+    () => initial.turns.map((t) => ({ question: t.question, display: t.display }))
+  );
+  // Which gap the outstanding question belongs to, and how many times it has
+  // been asked. Attempt 2 is always accepted server-side.
+  const [attempt, setAttempt] = useState(1);
   const [thinking, setThinking] = useState(false);
   // The turn the user just sent, shown immediately. Without this the message
   // only appears once the next question resolves, so sending felt like nothing
@@ -158,11 +166,69 @@ export function IntakeChat({ initial }: { initial: IntakeStep }) {
   const [school, setSchool] = useState({ status: "", month: "", year: "" });
   const [reply, setReply] = useState("");
   const [error, setError] = useState("");
-  const endRef = useRef<HTMLDivElement>(null);
+  const replyRef = useRef<HTMLTextAreaElement>(null);
+
+  // Grow the composer with its content instead of scrolling a single line
+  // sideways, which hid everything but the tail of a long answer.
+  useEffect(() => {
+    const el = replyRef.current;
+    if (!el) return;
+
+    const resize = () => {
+      // Bail while the element has no width. On first commit the layout may not
+      // have settled, and an empty textarea reports the *placeholder's* wrapped
+      // height — at zero width that is dozens of lines, which pinned the box to
+      // its max on load.
+      if (!el.offsetWidth) return;
+      el.style.height = "auto";
+      // The box is border-box, so scrollHeight (content + padding) leaves out
+      // the borders. Without adding them back the last line clips.
+      const chrome = el.offsetHeight - el.clientHeight;
+      el.style.height = `${Math.min(el.scrollHeight + chrome, MAX_COMPOSER_PX)}px`;
+    };
+
+    resize();
+    // Re-measure once layout has actually happened, and again whenever the
+    // available width changes.
+    const raf = requestAnimationFrame(resize);
+    window.addEventListener("resize", resize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
+  }, [reply]);
+
+  const firstScroll = useRef(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // The transcript owns its scrolling, so this is a plain assignment on a box
+  // whose height is known — no competing with page layout, hydration, or the
+  // router, all of which broke the previous document-level approach.
+  const scrollToLatest = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({
+      top: el.scrollHeight,
+      // Opening on an animation from the top looks broken.
+      behavior: firstScroll.current ? "auto" : "smooth",
+    });
+    firstScroll.current = false;
+  }, []);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [step.turns.length, thinking, step.question, pending]);
+    scrollToLatest();
+  }, [transcript.length, thinking, step.question, pending, scrollToLatest]);
+
+  // Content can still settle after the effect (webfont swap, the composer
+  // resizing), so re-anchor on any size change rather than trusting one pass.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => scrollToLatest());
+    ro.observe(el);
+    for (const child of Array.from(el.children)) ro.observe(child);
+    return () => ro.disconnect();
+  }, [scrollToLatest]);
 
   async function submit(value: unknown) {
     if (!step.field || !step.question || thinking) return;
@@ -179,14 +245,25 @@ export function IntakeChat({ initial }: { initial: IntakeStep }) {
         question: step.question,
         value,
         display,
+        attempt,
       });
-      setStep(next);
+      // The exchange happened either way, so it stays in the transcript even
+      // when the answer was not good enough to save.
+      setTranscript((prev) => [...prev, { question: step.question!, display }]);
       setPending(null);
       setPicked([]);
       setSchool({ status: "", month: "", year: "" });
-      if (next.done) {
-        router.push("/");
-        router.refresh();
+      if (next.followUp) {
+        // Same gap, sharper question. Do not advance the section.
+        setStep((prev) => ({ ...prev, question: next.followUp! }));
+        setAttempt(2);
+      } else {
+        setStep(next);
+        setAttempt(1);
+        if (next.done) {
+          router.push("/");
+          router.refresh();
+        }
       }
     } catch {
       // Nothing was saved, so drop the optimistic turn and put the widget back.
@@ -225,19 +302,24 @@ export function IntakeChat({ initial }: { initial: IntakeStep }) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const answered = step.turns;
+  const answered = transcript;
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[12rem_minmax(0,40rem)_12rem]">
-      <Sidebar
-        activeSection={step.activeSection}
-        answeredSections={step.answeredSections}
-      />
+    <div className="mx-auto grid h-full w-full max-w-6xl grid-cols-1 gap-10 overflow-hidden px-4 sm:px-6 lg:grid-cols-[12rem_minmax(0,40rem)_12rem]">
+      <div className="hidden pt-12 lg:block">
+        <Sidebar
+          activeSection={step.activeSection}
+          answeredSections={step.answeredSections}
+        />
+      </div>
 
-      <div className="min-w-0 pb-44">
-        <div className="space-y-8">
-          {answered.map((t) => (
-            <div key={t.field} className="space-y-4">
+      {/* min-h-0 is what lets the scroll area actually shrink inside a grid
+          row; without it the column grows and the page scrolls again. */}
+      <div className="flex min-h-0 min-w-0 flex-col">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto py-12">
+          <div className="space-y-8">
+          {answered.map((t, i) => (
+            <div key={`${i}-${t.question}`} className="space-y-4">
               <p className="text-[15px]">{t.question}</p>
               <Bubble text={t.display} />
             </div>
@@ -281,23 +363,17 @@ export function IntakeChat({ initial }: { initial: IntakeStep }) {
                         disabled={!picked.length || thinking}
                         onClick={() => void submit(picked)}
                       >
-                        Submit <CornerDownLeft className="size-3.5" />
+                        submit <CornerDownLeft className="size-3.5" />
                       </Button>
                     </div>
                   ) : null}
                 </div>
               ) : null}
 
-              {step.widget === "text" ? (
-                <p className="text-sm text-muted-foreground">
-                  {step.placeholder || "Type your answer below."}
-                </p>
-              ) : null}
-
               {step.widget === "school" ? (
                 <div className="space-y-4 rounded-xl border bg-card p-5 shadow-sm">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Where are you at with school?</p>
+                    <p className="text-sm font-medium">where are you at with school?</p>
                     <div className="flex flex-wrap gap-2">
                       {SCHOOL_STATUS.map((s) => (
                         <button
@@ -305,7 +381,7 @@ export function IntakeChat({ initial }: { initial: IntakeStep }) {
                           type="button"
                           onClick={() => setSchool((v) => ({ ...v, status: s }))}
                           className={cn(
-                            "rounded-md border px-3.5 py-2 text-sm transition-colors",
+                            "rounded-md border px-3.5 py-2 text-sm lowercase transition-colors",
                             school.status === s
                               ? "border-foreground bg-accent"
                               : "hover:bg-accent/60"
@@ -319,8 +395,8 @@ export function IntakeChat({ initial }: { initial: IntakeStep }) {
                   <div className="space-y-2">
                     <p className="text-sm font-medium">
                       {school.status === "Already graduated"
-                        ? "When did you graduate?"
-                        : "When do you graduate?"}
+                        ? "when did you graduate?"
+                        : "when do you graduate?"}
                     </p>
                     <div className="flex gap-2">
                       <select
@@ -329,7 +405,7 @@ export function IntakeChat({ initial }: { initial: IntakeStep }) {
                         onChange={(e) => setSchool((v) => ({ ...v, month: e.target.value }))}
                         className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
                       >
-                        <option value="">Month</option>
+                        <option value="">month</option>
                         {MONTHS.map((m) => (
                           <option key={m} value={m}>{m}</option>
                         ))}
@@ -340,7 +416,7 @@ export function IntakeChat({ initial }: { initial: IntakeStep }) {
                         onChange={(e) => setSchool((v) => ({ ...v, year: e.target.value }))}
                         className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
                       >
-                        <option value="">Year</option>
+                        <option value="">year</option>
                         {years().map((y) => (
                           <option key={y} value={y}>{y}</option>
                         ))}
@@ -354,7 +430,7 @@ export function IntakeChat({ initial }: { initial: IntakeStep }) {
                       disabled={!school.status || thinking}
                       onClick={() => void submit(school)}
                     >
-                      Next <CornerDownLeft className="size-3.5" />
+                      next <CornerDownLeft className="size-3.5" />
                     </Button>
                   </div>
                 </div>
@@ -363,7 +439,7 @@ export function IntakeChat({ initial }: { initial: IntakeStep }) {
           ) : null}
 
           {thinking ? (
-            <p className="animate-pulse text-sm text-muted-foreground">Thinking…</p>
+            <p className="animate-pulse text-sm text-muted-foreground">thinking…</p>
           ) : null}
 
           {error ? (
@@ -371,42 +447,53 @@ export function IntakeChat({ initial }: { initial: IntakeStep }) {
               {error}
             </p>
           ) : null}
+          </div>
         </div>
-        <div ref={endRef} />
-      </div>
 
-      {/* Mirrors the sidebar so the conversation column lands on the page
-          centre line, in step with the composer below. */}
-      <div aria-hidden className="hidden lg:block" />
-
-      {/* Always available: any question can be answered in prose instead. */}
-      <div className="fixed inset-x-0 bottom-0 bg-gradient-to-t from-background via-background to-transparent pb-6 pt-10">
+        {/* In normal flow under the scroll area, so nothing can ever be hidden
+            behind it and no padding or scroll-margin compensation is needed. */}
         <form
-          className="mx-auto flex w-full max-w-[40rem] items-center gap-2 px-4 sm:px-6"
+          className="flex shrink-0 items-end gap-2 pb-6 pt-3"
           onSubmit={(e) => {
             e.preventDefault();
             if (reply.trim()) void submit(reply.trim());
           }}
         >
           <div className="relative flex-1">
-            <input
+            <textarea
+              ref={replyRef}
+              rows={1}
               value={reply}
               onChange={(e) => setReply(e.target.value)}
-              placeholder="Type your reply..."
+              onKeyDown={(e) => {
+                // Enter sends, Shift+Enter breaks the line — the convention
+                // every chat input follows.
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (reply.trim() && !thinking && !step.done) void submit(reply.trim());
+                }
+              }}
+              placeholder={step.placeholder || "type your reply..."}
               disabled={thinking || step.done}
-              className="h-13 w-full rounded-full border bg-card py-4 pl-6 pr-14 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+              // rounded-3xl reads as a pill on one line and as a rounded box
+              // once it grows, so it never looks like a stretched capsule.
+              className="block max-h-40 w-full resize-none overflow-y-auto rounded-3xl border bg-card py-3.5 pl-6 pr-14 text-sm leading-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
             />
             <button
               type="submit"
               aria-label="Send reply"
               disabled={thinking || step.done}
-              className="absolute right-2 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-foreground text-background transition-opacity disabled:opacity-40"
+              className="absolute bottom-1.5 right-2 flex size-9 items-center justify-center rounded-full bg-foreground text-background transition-opacity disabled:opacity-40"
             >
               {thinking ? <Square className="size-3.5" /> : <ArrowUp className="size-4" />}
             </button>
           </div>
         </form>
       </div>
+
+      {/* Mirrors the sidebar so the conversation column lands on the page
+          centre line. */}
+      <div aria-hidden className="hidden lg:block" />
     </div>
   );
 }

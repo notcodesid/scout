@@ -60,14 +60,14 @@ export function CompaniesPage({ companies }: { companies: Company[] }) {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="max-w-xl">
-          <h1 className="text-3xl font-semibold tracking-tight">Pipeline</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">pipeline</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             Fewer companies, better applications. One company at a time, through research, fit,
             proof, outreach, and quality.
           </p>
         </div>
         <Button onClick={() => setFormOpen((v) => !v)}>
-          <Plus /> Add company
+          <Plus /> add company
         </Button>
       </div>
 
@@ -123,10 +123,10 @@ export function CompaniesPage({ companies }: { companies: Company[] }) {
               </Field>
               <div className="flex gap-2 sm:col-span-2">
                 <Button type="submit" disabled={!name.trim() || saving}>
-                  {saving ? "Adding..." : "Add to pipeline"}
+                  {saving ? "adding..." : "add to pipeline"}
                 </Button>
                 <Button variant="ghost" onClick={() => setFormOpen(false)}>
-                  Cancel
+                  cancel
                 </Button>
               </div>
             </form>
@@ -137,11 +137,11 @@ export function CompaniesPage({ companies }: { companies: Company[] }) {
       {companies.length === 0 ? (
         <EmptyState
           icon={<Building2 className="size-7" strokeWidth={1.5} />}
-          title="No companies yet"
+          title="no companies yet"
           description="Add the first company you want to apply to properly, then work it through the pipeline. The point is to go deep, not wide."
           action={
             <Button onClick={() => setFormOpen(true)}>
-              <Plus /> Add company
+              <Plus /> add company
             </Button>
           }
         />

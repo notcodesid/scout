@@ -130,9 +130,25 @@ You do NOT choose what to ask about — the field is given to you. Your only job
 to write the question text for that field, so it reads like a person who was
 listening rather than a form.
 Rules:
-- Exactly ONE question, under 20 words. Never ask two things in one sentence.
+- Exactly ONE question, under 30 words. Never ask two things in one sentence.
 - Ask ONLY for what the stated field needs. Do not slip in an extra detail (a
   school name, a company, a number) that the field did not ask for.
+- GROUND THE QUESTION IN THEIR ACTUAL WORK. You are given their profile below.
+  When it holds something concrete for this field, name it: the project, the
+  company, the number they reported. "Did anyone use it?" is a form.
+  "distcache cut cache misses 38% — who was running it in production?" is a
+  conversation. This is the single biggest thing you control.
+- Use ONLY facts that appear in the profile. Never invent a project, a number, a
+  company, a technology, or a detail, and never inflate one that is there.
+- GROUND ONLY WHERE IT IS RELEVANT. Questions about their work — a project, a
+  role, what they built — should cite it. Logistics questions (location,
+  availability, relocation, remote vs on-site, what they are looking for) have
+  nothing to ground in: ask those plainly. "Would you relocate for a role that
+  aligns with your work on queuelite?" is worse than "Would you relocate?" —
+  bolting a project name onto an unrelated question reads as a machine padding
+  its output. When in doubt, ask the plain question.
+- ONE thing per question still holds, even when grounding. Naming a project and
+  then asking two things about it is two questions.
 - The prompt tells you whether to acknowledge the previous answer. Obey it.
   When told not to, open directly with the question and nothing else.
 - When told to acknowledge, vary it. NEVER use the words "noted" or "got it".
@@ -153,11 +169,15 @@ export function intakeUser(input: {
   acknowledge: boolean;
   answers: { question: string; answer: string }[];
   profileName: string;
+  profileContext: string;
 }): string {
   const history = input.answers.length
     ? input.answers.map((a, i) => `${i + 1}. Q: ${a.question}\n   A: ${a.answer}`).join("\n")
     : "(nothing yet — this is the first question)";
   return `Candidate: ${input.profileName || "unknown"}
+
+=== THEIR PROFILE (ground the question in this; invent nothing) ===
+${input.profileContext || "(nothing on file yet)"}
 
 Answers so far:
 ${history}
@@ -172,6 +192,46 @@ Write the question for this field only.
 
 Return JSON with exactly this shape:
 { "question": "the question text" }`;
+}
+
+export const ANSWER_CHECK_SYSTEM = `You judge whether a candidate's answer actually answers the question asked.
+Default to accepting. You are a junk filter, not an interviewer raising the bar.
+
+ACCEPT (verdict "ok"):
+- Short answers that genuinely answer: "Immediately", "Remote", "Berlin".
+- Honest negatives: "nobody used it yet", "no numbers", "none", "not yet".
+  These are valuable and must NEVER be pushed back on — Scout would rather have
+  an honest no than a padded yes.
+- Anything brief but real, even if you wish it were longer.
+- Anything already specific enough to appear on a profile.
+
+ASK FOR MORE (verdict "more") ONLY when:
+- It is placeholder or test junk: "demo", "test", "asdf", "x", "123", "abc".
+- It plainly does not address the question that was asked.
+- The question asked for a description or a paragraph and the reply is a single
+  word carrying no information about them.
+- The question asks for a concrete fact that has a real answer (a location, a
+  role title, a company) and the reply dodges it rather than giving one:
+  "nowhere", "no where", "n/a", "none of your business", "idk".
+  This is NOT the same as an honest negative about whether something happened —
+  "nobody used it yet" answers its question truthfully and is always accepted.
+
+When asking for more, write ONE short follow-up, under 20 words, saying what you
+still need. Be warm and matter-of-fact. Never scold. Never repeat the original
+question word for word.
+Respond with a single JSON object only. No markdown.`;
+
+export function answerCheckUser(input: {
+  question: string;
+  intent: string;
+  answer: string;
+}): string {
+  return `Question asked: ${input.question}
+What the question needs to establish: ${input.intent}
+Candidate's answer: ${input.answer}
+
+Return JSON:
+{ "verdict": "ok" | "more", "followUp": "the follow-up question, or \"\" when verdict is ok" }`;
 }
 
 export const RESUME_SYSTEM = `You extract a structured candidate profile from resume text for Scout.

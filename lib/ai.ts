@@ -27,6 +27,8 @@ import {
   PROOF_SYSTEM,
   qualityUser,
   QUALITY_SYSTEM,
+  answerCheckUser,
+  ANSWER_CHECK_SYSTEM,
   intakeUser,
   INTAKE_SYSTEM,
   resumeUser,
@@ -622,6 +624,14 @@ export async function buildDossierServer(opts: {
   );
 }
 
+// The intake UI is lowercase throughout. Normalising here rather than asking
+// the model keeps it deterministic — models capitalise sentence starts by
+// reflex and will drift back within a few turns. Applies to the scripted
+// fallbacks too, so both paths look the same.
+function lower(text: string): string {
+  return text.toLowerCase();
+}
+
 // Writes the wording for one intake question. The field itself is chosen by
 // lib/intake.ts, never by the model — see lib/intake-spec.ts for why.
 export async function nextIntakeQuestionServer(opts: {
@@ -632,9 +642,10 @@ export async function nextIntakeQuestionServer(opts: {
   acknowledge: boolean;
   answers: { question: string; answer: string }[];
   profileName: string;
+  profileContext: string;
   fallbackQuestion: string;
 }): Promise<string> {
-  if (!hasAIKey()) return opts.fallbackQuestion;
+  if (!hasAIKey()) return lower(opts.fallbackQuestion);
   try {
     const res = await generateJSONServer<{ question?: unknown }>({
       system: INTAKE_SYSTEM,
@@ -642,11 +653,36 @@ export async function nextIntakeQuestionServer(opts: {
       fallback: () => ({}),
     });
     const q = asString(res.question).trim();
-    return q || opts.fallbackQuestion;
+    return lower(q || opts.fallbackQuestion);
   } catch {
     // A phrasing failure must never block the intake; the scripted wording is
     // always a correct question for this field.
-    return opts.fallbackQuestion;
+    return lower(opts.fallbackQuestion);
+  }
+}
+
+// Reads the answer and decides whether it is usable. Without this the intake
+// accepts anything — "demo" lands in the profile as a background paragraph.
+export async function checkAnswerServer(opts: {
+  question: string;
+  intent: string;
+  answer: string;
+}): Promise<{ ok: boolean; followUp: string }> {
+  if (!hasAIKey()) return { ok: true, followUp: "" };
+  try {
+    const res = await generateJSONServer<{ verdict?: unknown; followUp?: unknown }>({
+      system: ANSWER_CHECK_SYSTEM,
+      user: answerCheckUser(opts),
+      fallback: () => ({ verdict: "ok" }),
+    });
+    const verdict = asString(res.verdict).trim().toLowerCase();
+    const followUp = asString(res.followUp).trim();
+    // Anything other than an explicit "more" accepts: a judgement failure must
+    // never trap someone on a question they already answered.
+    if (verdict === "more" && followUp) return { ok: false, followUp: followUp.toLowerCase() };
+    return { ok: true, followUp: "" };
+  } catch {
+    return { ok: true, followUp: "" };
   }
 }
 

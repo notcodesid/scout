@@ -21,7 +21,7 @@ export function computeGaps(profile: EvidenceProfile): Gap[] {
       widget: "text",
       intent: "a one-line description of who they are professionally",
       fallbackQuestion: "How would you describe yourself in one line?",
-      placeholder: "Backend engineer building developer tools",
+      placeholder: "backend engineer building developer tools",
     });
   }
   if (blank(profile.about)) {
@@ -31,7 +31,7 @@ export function computeGaps(profile: EvidenceProfile): Gap[] {
       widget: "text",
       intent: "a short paragraph of background, in their own voice",
       fallbackQuestion: "Give me a couple of sentences on your background.",
-      placeholder: "What you work on, what you're good at, what you're drawn to",
+      placeholder: "what you work on, what you're good at, what you're drawn to",
     });
   }
   if (blank(profile.location)) {
@@ -41,7 +41,7 @@ export function computeGaps(profile: EvidenceProfile): Gap[] {
       widget: "text",
       intent: "where they are based",
       fallbackQuestion: "Where are you based?",
-      placeholder: "San Francisco, CA",
+      placeholder: "san Francisco, CA",
     });
   }
 
@@ -53,7 +53,7 @@ export function computeGaps(profile: EvidenceProfile): Gap[] {
       widget: "text",
       intent: "the role titles they are targeting",
       fallbackQuestion: "What roles are you going after?",
-      placeholder: "Backend engineer, infrastructure engineer",
+      placeholder: "backend engineer, infrastructure engineer",
     });
   }
   if (blank(profile.availability)) {
@@ -91,7 +91,7 @@ export function computeGaps(profile: EvidenceProfile): Gap[] {
       widget: "text",
       intent: "the technologies and named capabilities they actually work in",
       fallbackQuestion: "What do you actually work in day to day?",
-      placeholder: "Go, PostgreSQL, Kubernetes, Terraform",
+      placeholder: "go, PostgreSQL, Kubernetes, Terraform",
     });
   }
 
@@ -108,7 +108,7 @@ export function computeGaps(profile: EvidenceProfile): Gap[] {
         intent: `the visible result of the project "${p.name}" — numbers if there are any`,
         context: `Project "${p.name}": ${p.problem || p.work}`.slice(0, 300),
         fallbackQuestion: `What came out of ${p.name}?`,
-        placeholder: "Numbers if you have them, honest description if you don't",
+        placeholder: "numbers if you have them, honest description if you don't",
       });
     }
     if (blank(p.users)) {
@@ -120,7 +120,7 @@ export function computeGaps(profile: EvidenceProfile): Gap[] {
         context:
           `Project "${p.name}": ${p.problem || p.work}. Outcome on file: ${p.outcome || "none"}`.slice(0, 300),
         fallbackQuestion: `Did anyone actually use ${p.name}?`,
-        placeholder: "Who used it and what they said — or 'nobody yet', which is a fine answer",
+        placeholder: "who used it and what they said — or 'nobody yet', which is a fine answer",
       });
     }
   }
@@ -135,7 +135,7 @@ export function computeGaps(profile: EvidenceProfile): Gap[] {
         intent: `what they actually did as ${x.role} at ${x.company}`,
         context: `Role: ${x.role} at ${x.company}`,
         fallbackQuestion: `What did you actually do at ${x.company}?`,
-        placeholder: "One or two sentences",
+        placeholder: "one or two sentences",
       });
     }
   }
@@ -147,10 +147,39 @@ export function computeGaps(profile: EvidenceProfile): Gap[] {
     widget: "text",
     intent: "anything else worth knowing before matching them to companies",
     fallbackQuestion: "Anything else worth knowing before we start matching you?",
-    placeholder: "Constraints, visa status, teams you'd love to work with...",
+    placeholder: "constraints, visa status, teams you'd love to work with...",
   });
 
   return gaps;
+}
+
+// Compact enough for a free-tier prompt, concrete enough for the model to cite
+// a real project or number instead of asking a generic question.
+function profileContext(profile: EvidenceProfile): string {
+  const lines: string[] = [];
+  if (profile.headline) lines.push(`Headline: ${profile.headline}`);
+  if (profile.about) lines.push(`About: ${profile.about.slice(0, 240)}`);
+  if (profile.skills.length) {
+    lines.push(`Skills: ${profile.skills.slice(0, 12).map((s) => s.name).join(", ")}`);
+  }
+  for (const p of profile.projects.slice(0, 5)) {
+    lines.push(
+      `Project "${p.name}": ${[p.problem, p.work].filter(Boolean).join(" ").slice(0, 180)}` +
+        (p.outcome ? ` | outcome: ${p.outcome.slice(0, 120)}` : "") +
+        (p.users ? ` | users: ${p.users.slice(0, 100)}` : " | users: not recorded")
+    );
+  }
+  for (const x of profile.experience.slice(0, 4)) {
+    lines.push(
+      `Role: ${x.role} at ${x.company}` +
+        (x.summary ? ` — ${x.summary.slice(0, 140)}` : "") +
+        (x.bullets.length ? ` — ${x.bullets[0].slice(0, 140)}` : "")
+    );
+  }
+  for (const e of profile.education.slice(0, 2)) {
+    lines.push(`Education: ${[e.degree, e.field, e.school].filter(Boolean).join(" ")}`);
+  }
+  return lines.join("\n");
 }
 
 export interface IntakeTurn {
@@ -226,6 +255,7 @@ export async function getIntakeState(): Promise<IntakeState> {
     acknowledge: turns.length > 0 && turns.length % 3 === 1,
     answers: turns.map((t) => ({ question: t.question, answer: t.display })),
     profileName: profile.name,
+    profileContext: profileContext(profile),
     fallbackQuestion: gap.fallbackQuestion,
   });
 
@@ -284,6 +314,12 @@ async function applyToProfile(gapId: string, value: unknown): Promise<void> {
       data: { summary: text },
     });
   }
+}
+
+/** The intent string for a gap id, or "" if the gap is already closed. */
+export async function intentFor(gapId: string): Promise<string> {
+  const profile = await getProfile();
+  return computeGaps(profile).find((g) => g.id === gapId)?.intent ?? "";
 }
 
 export async function saveIntakeAnswer(input: {

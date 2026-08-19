@@ -19,7 +19,7 @@ export function TrackerPage({ companies }: { companies: Company[] }) {
   if (companies.length === 0) {
     return (
       <EmptyState
-        title="Nothing to track yet"
+        title="nothing to track yet"
         description="Add companies in the pipeline first. The tracker only nudges follow-ups when the application was actually strong."
         action={
           <Link
@@ -36,7 +36,7 @@ export function TrackerPage({ companies }: { companies: Company[] }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Tracker</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">tracker</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Follow-ups amplify signal; they don't create it. Only nudge a strong application.
         </p>
