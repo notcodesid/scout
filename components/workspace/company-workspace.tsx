@@ -8,6 +8,7 @@ import { deleteCompanyAction } from "@/app/companies/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { stageDone, stageUnlocked, lockReason } from "@/lib/pipeline";
 import { STAGE_LABELS, STAGE_ORDER, type Company, type Stage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -17,55 +18,6 @@ import {
   QualityStage,
   ResearchStage,
 } from "./stages";
-
-function stageDone(company: Company, stage: Stage): boolean {
-  switch (stage) {
-    case "research":
-      return Boolean(company.dossier);
-    case "fit":
-      return Boolean(company.fit);
-    case "proof":
-      return company.proofTasks.some((t) => t.done);
-    case "outreach":
-      return Boolean(company.outreach);
-    case "quality":
-      return Boolean(company.quality);
-  }
-}
-
-function stageUnlocked(company: Company, stage: Stage): boolean {
-  switch (stage) {
-    case "research":
-      return true;
-    case "fit":
-      return Boolean(company.dossier?.verified);
-    case "proof":
-      return Boolean(company.fit);
-    case "outreach":
-      return (
-        Boolean(company.dossier?.verified) &&
-        Boolean(company.fit) &&
-        company.proofTasks.some((t) => t.done)
-      );
-    case "quality":
-      return Boolean(company.outreach);
-  }
-}
-
-function lockReason(company: Company, stage: Stage): string {
-  switch (stage) {
-    case "fit":
-      return "Verify the research dossier first";
-    case "proof":
-      return "Complete the fit analysis first";
-    case "outreach":
-      return "Verify research, finish fit analysis, and complete at least one proof task";
-    case "quality":
-      return "Draft outreach first";
-    default:
-      return "";
-  }
-}
 
 export function CompanyWorkspace({ initialCompany }: { initialCompany: Company }) {
   const router = useRouter();
@@ -139,7 +91,7 @@ export function CompanyWorkspace({ initialCompany }: { initialCompany: Company }
               role="tab"
               aria-selected={isActive}
               disabled={!unlocked}
-              title={!unlocked ? lockReason(company, stage) : undefined}
+              title={!unlocked ? lockReason(stage) : undefined}
               onClick={() => setActive(stage)}
               className={cn(
                 "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",

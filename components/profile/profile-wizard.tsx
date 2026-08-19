@@ -198,7 +198,7 @@ export function ProfileWizard({ initialProfile }: { initialProfile: EvidenceProf
   if (finished) {
     return (
       <div className="mx-auto max-w-xl space-y-6 py-10 text-center">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-600/15 text-emerald-600 dark:text-emerald-400">
+        <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-600/15 text-emerald-600">
           <CheckCircle2 className="size-7" />
         </div>
         <div className="space-y-2">
@@ -236,7 +236,7 @@ export function ProfileWizard({ initialProfile }: { initialProfile: EvidenceProf
         </div>
         <div className="flex items-center gap-3">
           {status === "saved" ? (
-            <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+            <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-600">
               <CheckCircle2 className="size-4" /> Saved
             </span>
           ) : null}

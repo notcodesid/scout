@@ -374,12 +374,12 @@ function StepResume(p: {
                 </p>
               ) : null}
               {p.resume.mock ? (
-                <p className="mt-2 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-700 dark:text-amber-400">
+                <p className="mt-2 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-700">
                   No AI key configured, so nothing was extracted. The file was read, but
                   set AI_API_KEY and re-upload to fill your profile.
                 </p>
               ) : (
-                <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+                <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-emerald-700">
                   <Check className="size-3.5" /> Added to your profile — you can edit it later.
                 </p>
               )}

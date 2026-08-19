@@ -2,54 +2,43 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ArrowRight, Building2, Plus, Trash2 } from "lucide-react";
-import { addCompanyAction, deleteCompanyAction } from "@/app/companies/actions";
-import { Badge } from "@/components/ui/badge";
+import { ArrowRight, Bell, Plus, Trash2 } from "lucide-react";
+import { deleteCompanyAction } from "@/app/companies/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  doneCount,
+  followUpDue,
+  nextAction,
+  sortForPipeline,
+  todayISO,
+} from "@/lib/pipeline";
 import type { Company } from "@/lib/types";
-import { STAGE_LABELS } from "@/lib/types";
+import { STAGE_LABELS, STAGE_ORDER } from "@/lib/types";
 import { cn, timeAgo } from "@/lib/utils";
+
+
+/** Five dots, one per stage — the gate made visible at a glance. */
+function StageTrack({ company }: { company: Company }) {
+  const done = doneCount(company);
+  return (
+    <span className="flex items-center gap-1" aria-label={`${done} of 5 stages complete`}>
+      {STAGE_ORDER.map((stage, i) => (
+        <span
+          key={stage}
+          title={STAGE_LABELS[stage]}
+          className={cn(
+            "size-1.5 rounded-full",
+            i < done ? "bg-foreground" : "bg-muted-foreground/25"
+          )}
+        />
+      ))}
+    </span>
+  );
+}
 
 export function CompaniesPage({ companies }: { companies: Company[] }) {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
-  const [jobUrl, setJobUrl] = useState("");
-  const [notes, setNotes] = useState("");
-  const [formOpen, setFormOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim() || saving) return;
-    setSaving(true);
-    setError("");
-    try {
-      await addCompanyAction({
-        name: name.trim(),
-        url: url.trim(),
-        jobUrl: jobUrl.trim(),
-        notes: notes.trim(),
-      });
-      setName("");
-      setUrl("");
-      setJobUrl("");
-      setNotes("");
-      setFormOpen(false);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add company");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   async function remove(id: string) {
     await deleteCompanyAction(id);
@@ -66,131 +55,111 @@ export function CompaniesPage({ companies }: { companies: Company[] }) {
             proof, outreach, and quality.
           </p>
         </div>
-        <Button onClick={() => setFormOpen((v) => !v)}>
-          <Plus /> add company
-        </Button>
+        {companies.length > 0 ? (
+          <Link href="/companies/new" className={cn(buttonVariants())}>
+            <Plus /> add company
+          </Link>
+        ) : null}
       </div>
 
-      {error ? (
-        <p className="rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
-
-      {formOpen ? (
-        <Card>
-          <CardContent className="pt-6">
-            <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-              <Field label="Company name" htmlFor="c-name">
-                <Input
-                  id="c-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Acme Labs"
-                  required
-                />
-              </Field>
-              <Field label="Company URL" htmlFor="c-url">
-                <Input
-                  id="c-url"
-                  type="url"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://acme.com"
-                />
-              </Field>
-              <Field label="Job post URL" htmlFor="c-job">
-                <Input
-                  id="c-job"
-                  type="url"
-                  value={jobUrl}
-                  onChange={(e) => setJobUrl(e.target.value)}
-                  placeholder="https://acme.com/jobs/engineer"
-                />
-              </Field>
-              <Field
-                label="What do you know already?"
-                htmlFor="c-notes"
-                hint="Paste the job description, founder names, or anything you found. The research stage builds from this."
-                className="sm:col-span-2"
-              >
-                <Textarea
-                  id="c-notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Paste the job post or any notes..."
-                />
-              </Field>
-              <div className="flex gap-2 sm:col-span-2">
-                <Button type="submit" disabled={!name.trim() || saving}>
-                  {saving ? "adding..." : "add to pipeline"}
-                </Button>
-                <Button variant="ghost" onClick={() => setFormOpen(false)}>
-                  cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      ) : null}
+      {/* followUpDate reminder */}
+      {(() => {
+        const today = todayISO();
+        const due = companies.filter((c) => followUpDue(c, today));
+        if (!due.length) return null;
+        return (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-amber-500/10 px-4 py-3 text-sm">
+            <Bell className="size-4 shrink-0 text-amber-700" />
+            <span className="text-amber-800">
+              {due.length} {due.length === 1 ? "company needs" : "companies need"} a follow-up
+            </span>
+            <span className="text-amber-700/80">
+              {due.map((c) => c.name || "untitled").join(", ")}
+            </span>
+          </div>
+        );
+      })()}
 
       {companies.length === 0 ? (
-        <EmptyState
-          icon={<Building2 className="size-7" strokeWidth={1.5} />}
-          title="no companies yet"
-          description="Add the first company you want to apply to properly, then work it through the pipeline. The point is to go deep, not wide."
-          action={
-            <Button onClick={() => setFormOpen(true)}>
-              <Plus /> add company
-            </Button>
-          }
-        />
-      ) : (
-        <div className="space-y-3">
-          {companies.map((company) => {
-            const doneTasks = company.proofTasks.filter((t) => t.done).length;
+        <div className="flex flex-col items-center gap-6 px-6 py-24 text-center">
+          <div className="space-y-2">
+            <p className="text-[15px] font-medium">no companies yet</p>
+            <p className="mx-auto max-w-md text-sm leading-relaxed text-muted-foreground">
+              scout works one company at a time. outreach stays locked until you
+              have verified research, an honest fit verdict, and one completed
+              proof task.
+            </p>
+          </div>
+
+          <Link href="/companies/new" className={cn(buttonVariants())}>
+            <Plus /> add company
+          </Link>
+
+          {/* The gate, stated once and quietly. Read from STAGE_ORDER so it can
+              never drift from the stages the workspace actually enforces. */}
+          <ol className="flex flex-wrap items-center justify-center gap-2 pt-6 font-mono text-[11px] lowercase text-muted-foreground/60">
+            {STAGE_ORDER.map((stage, i) => (
+              <li key={stage} className="flex items-center gap-2">
+                {i > 0 ? <span aria-hidden>&rarr;</span> : null}
+                <span>{STAGE_LABELS[stage]}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : companies.length > 0 ? (
+        <div className="space-y-2">
+          {sortForPipeline(companies).map((company) => {
+            const next = nextAction(company);
+            const due = followUpDue(company, todayISO());
             return (
               <Card
                 key={company.id}
-                className="group border-transparent bg-card/70 shadow-none transition-colors hover:border-border hover:bg-card"
+                className={cn(
+                  "group border-transparent bg-card/70 shadow-none transition-colors hover:border-border hover:bg-card",
+                  // Nothing owed: recede so the eye lands on live work.
+                  !next.actionable && "opacity-60"
+                )}
               >
                 <CardContent className="flex items-center gap-4 p-4 sm:p-5">
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                       <Link
                         href={`/companies/${company.id}`}
                         className="truncate font-medium hover:underline"
                       >
-                        {company.name || "Untitled company"}
+                        {company.name || "untitled company"}
                       </Link>
-                      <Badge variant="secondary">{STAGE_LABELS[company.stage]}</Badge>
-                      {company.fit?.recommendation ? (
-                        <Badge
-                          variant={
-                            company.fit.recommendation === "apply"
-                              ? "success"
-                              : company.fit.recommendation === "skip"
-                                ? "destructive"
-                                : "warning"
-                          }
-                        >
-                          {company.fit.recommendation}
-                        </Badge>
+                      <StageTrack company={company} />
+                      <span className="font-mono text-[11px] lowercase text-muted-foreground">
+                        {STAGE_LABELS[company.stage]}
+                      </span>
+                      {due ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">
+                          <Bell className="size-3" /> follow up
+                        </span>
                       ) : null}
                     </div>
-                    <p className="mt-1.5 font-mono text-[11px] text-muted-foreground">
-                      updated {timeAgo(company.updatedAt)}
-                      {company.proofTasks.length > 0
-                        ? ` · proof ${doneTasks}/${company.proofTasks.length}`
-                        : ""}
+                    {/* The point of the row: what is standing in the way. */}
+                    <p
+                      className={cn(
+                        "mt-1.5 truncate text-sm",
+                        next.actionable ? "text-foreground/80" : "text-muted-foreground"
+                      )}
+                    >
+                      {next.label}
                     </p>
                   </div>
+
+                  <span className="hidden shrink-0 font-mono text-[11px] lowercase text-muted-foreground sm:block">
+                    {timeAgo(company.updatedAt)}
+                  </span>
+
                   <div className="flex items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => remove(company.id)}
-                      aria-label={`Delete ${company.name}`}
+                      aria-label={`delete ${company.name}`}
                       className="text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 />
@@ -198,10 +167,10 @@ export function CompaniesPage({ companies }: { companies: Company[] }) {
                   </div>
                   <Link
                     href={`/companies/${company.id}`}
-                    aria-label={`Open ${company.name}`}
+                    aria-label={`open ${company.name}`}
                     className={cn(
                       buttonVariants({ variant: "ghost", size: "icon" }),
-                      "text-muted-foreground"
+                      "shrink-0 text-muted-foreground"
                     )}
                   >
                     <ArrowRight />
@@ -211,7 +180,8 @@ export function CompaniesPage({ companies }: { companies: Company[] }) {
             );
           })}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
+

@@ -29,14 +29,7 @@ export default async function RootLayout({
   const status = await getAuthStatus();
   const email = status.state === "ok" ? status.email : null;
   return (
-    <html lang="en" className={pretendard.variable} suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('scout:theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}`,
-          }}
-        />
-      </head>
+    <html lang="en" className={pretendard.variable}>
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
         <StoreProvider>
           <AppShell email={email}>{children}</AppShell>

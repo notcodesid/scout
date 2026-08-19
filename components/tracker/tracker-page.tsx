@@ -102,7 +102,7 @@ export function TrackerPage({ companies }: { companies: Company[] }) {
                       <span
                         className={
                           company.quality.score >= 75
-                            ? "font-medium text-emerald-600 dark:text-emerald-400"
+                            ? "font-medium text-emerald-600"
                             : "text-muted-foreground"
                         }
                       >

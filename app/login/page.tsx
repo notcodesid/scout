@@ -22,7 +22,7 @@ function ErrorNote({
     const missing = missingAuthEnv();
     return (
       <div className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-left text-sm">
-        <p className="font-medium text-amber-700 dark:text-amber-400">
+        <p className="font-medium text-amber-700">
           Auth is not configured
         </p>
         <p className="mt-1 text-muted-foreground">
@@ -32,7 +32,7 @@ function ErrorNote({
         </p>
         <ul className="mt-2 space-y-0.5">
           {missing.map((m) => (
-            <li key={m} className="font-mono text-xs text-amber-700 dark:text-amber-400">
+            <li key={m} className="font-mono text-xs text-amber-700">
               {m}
             </li>
           ))}

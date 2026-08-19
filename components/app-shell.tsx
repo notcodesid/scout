@@ -2,41 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
-import { Moon, Sun } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 import { signOutAction } from "@/app/auth/actions";
-import { Button } from "@/components/ui/button";
 import { useScout } from "@/lib/store";
-
-function ThemeToggle() {
-  const [dark, setDark] = useState(false);
-
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-  }, []);
-
-  function toggle() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    try {
-      localStorage.setItem("scout:theme", next ? "dark" : "light");
-    } catch {
-      // ignore
-    }
-  }
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={toggle}
-      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-    >
-      {dark ? <Sun /> : <Moon />}
-    </Button>
-  );
-}
 
 export function AppShell({
   children,
@@ -88,14 +56,13 @@ export function AppShell({
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md">
+      <header>
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-7 px-4 sm:px-6">
           <Link href="/" className="text-[15px] font-semibold tracking-tight">
             Scout
           </Link>
 
           <div className="ml-auto flex items-center gap-3">
-            <ThemeToggle />
             {email ? (
               <div className="flex items-center gap-3 pl-1">
                 <span className="hidden text-sm text-muted-foreground sm:inline">
