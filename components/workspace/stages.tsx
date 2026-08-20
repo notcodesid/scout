@@ -100,15 +100,17 @@ function StageHeader({
   mock?: boolean;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+    <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 text-muted-foreground">{icon}</div>
         <div>
-          <h2 className="font-semibold tracking-tight">{title}</h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
+          <h2 className="font-semibold lowercase tracking-tight">{title}</h2>
+          <p className="mt-1 max-w-2xl text-sm lowercase text-muted-foreground">
+            {description}
+          </p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 lowercase">
         {mock ? <Badge variant="warning">sample (mock)</Badge> : null}
         {action}
       </div>
@@ -164,11 +166,11 @@ export function ResearchStage({
   );
 
   const researchStages = [
-    "Fetching website…",
-    "Fetching job post…",
-    "Searching for team & funding…",
-    "Reading sources…",
-    "Writing the brief…",
+    "fetching website…",
+    "fetching job post…",
+    "searching for team & funding…",
+    "reading sources…",
+    "writing the brief…",
   ];
 
   useEffect(() => {
@@ -283,7 +285,7 @@ export function ResearchStage({
           </p>
           <p className="mt-1 text-muted-foreground">{researchError}</p>
           <p className="mt-2 text-xs text-muted-foreground">
-            You can still add notes manually and build a brief from what you
+            you can still add notes manually and build a brief from what you
             pasted.
           </p>
         </div>
@@ -298,8 +300,7 @@ export function ResearchStage({
                 {researchStages[stageIndex]}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Fetching real pages and searching the web. Usually 20–60
-                seconds.
+                fetching real pages and searching the web. usually 20–60 seconds.
               </p>
             </div>
           </div>
@@ -330,8 +331,8 @@ export function ResearchStage({
       ) : null}
 
       {!loading && draft ? (
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-6">
+          <div className="grid items-start gap-x-6 gap-y-4 sm:grid-cols-2">
             <Field label="Company" htmlFor="d-name">
               <Input
                 id="d-name"
@@ -420,7 +421,7 @@ export function ResearchStage({
             </Field>
           </div>
 
-          <div className="rounded-md border p-4">
+          <div className="rounded-xl bg-background/70 p-4">
             <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
@@ -430,11 +431,12 @@ export function ResearchStage({
               />
               <span>
                 <span className="block text-sm font-medium">
-                  I actually read the sources and used the product
+                  i actually read the sources and used the product
                 </span>
                 <span className="mt-0.5 block text-xs text-muted-foreground">
-                  This confirmation is the difference between real research and fake confidence.
-                  Fit analysis and outreach stay locked until it's checked.
+                  this confirmation is the difference between real research and
+                  fake confidence. fit analysis and outreach stay locked until it&apos;s
+                  checked.
                 </span>
               </span>
             </label>
@@ -443,10 +445,9 @@ export function ResearchStage({
       ) : null}
 
       {!loading && !draft ? (
-        <p className="text-sm text-muted-foreground">
-          Add the company URL and job post, then hit Research company. Scout
-          fetches the real pages, searches the web for context, and builds a
-          brief with sources you can verify.
+        <p className="text-sm lowercase text-muted-foreground">
+          add the company url and job post first — the brief is only as good as
+          what it can fetch.
         </p>
       ) : null}
     </div>
@@ -463,19 +464,19 @@ function ResearchSourcesPanel({
   const okCount = research.sources.filter((s) => s.status === "ok").length;
   const failed = research.sources.filter((s) => s.status !== "ok");
   return (
-    <div className="mb-5 rounded-lg border bg-card p-4">
+    <div className="mb-8">
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-sm font-medium">
           <FileSearch className="size-4 text-muted-foreground" />
-          What the AI read
+          what the ai read
         </p>
         <Badge variant="secondary">
           {okCount}/{research.sources.length} sources fetched
         </Badge>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        Every claim in the brief should trace back to one of these. Open the
-        ones you haven't seen before marking research verified.
+        every claim in the brief should trace back to one of these. open the
+        ones you haven&apos;t seen before marking research verified.
       </p>
       {steps && steps.length > 0 ? (
         <div className="mt-3 space-y-1">
@@ -492,14 +493,14 @@ function ResearchSourcesPanel({
           ))}
         </div>
       ) : null}
-      <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+      <div className="mt-2 divide-y divide-border/60">
         {research.sources.map((source, i) => (
           <SourceRow key={`${source.url}-${source.kind}-${i}`} source={source} />
         ))}
       </div>
       {failed.length > 0 ? (
         <p className="mt-2 text-xs text-muted-foreground">
-          Sources marked failed weren't reachable from here (some sites block
+          sources marked failed weren&apos;t reachable from here (some sites block
           fetchers). Verify them manually before relying on the brief.
         </p>
       ) : null}
@@ -521,7 +522,9 @@ function SourceRow({ source }: { source: ResearchSource }) {
         ? "skipped"
         : "failed";
   return (
-    <div className="rounded-md border bg-background p-3">
+    // Borderless row: a list of sources reads as a list, not as a grid of
+    // bordered tiles competing with the dossier fields below.
+    <div className="py-2">
       <div className="flex items-start justify-between gap-2">
         <a
           href={source.url}
@@ -549,25 +552,25 @@ function SourceRow({ source }: { source: ResearchSource }) {
 function PeoplePanel({ people }: { people: PersonContact[] }) {
   if (!people.length) {
     return (
-      <div className="mb-5 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-        No team members found yet. Re-run research with a job post for better
-        coverage, or add the people you know to contacts in the Outreach stage.
+      <div className="mb-8 text-sm text-muted-foreground">
+        no team members found yet. re-run research with a job post for better
+        coverage, or add the people you know to contacts in the outreach stage.
       </div>
     );
   }
   return (
-    <div className="mb-5 rounded-lg border bg-card p-4">
+    <div className="mb-8">
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-sm font-medium">
-          <Users className="size-4 text-muted-foreground" /> People found
+          <Users className="size-4 text-muted-foreground" /> people found
         </p>
         <Badge variant="secondary">{people.length}</Badge>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        Best-effort public contact info from web search. Verify before reaching
+        best-effort public contact info from web search. verify before reaching
         out — a wrong email or a dead link is worse than no contact.
       </p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+      <div className="mt-2 divide-y divide-border/60">
         {people.map((person) => (
           <PersonCard key={person.name} person={person} />
         ))}
@@ -578,7 +581,7 @@ function PeoplePanel({ people }: { people: PersonContact[] }) {
 
 function PersonCard({ person }: { person: PersonContact }) {
   return (
-    <div className="rounded-md border bg-background p-3">
+    <div className="py-2">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">{person.name}</p>
         {person.role ? <Badge variant="secondary">{person.role}</Badge> : null}
