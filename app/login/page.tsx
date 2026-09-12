@@ -44,7 +44,9 @@ function ErrorNote({
   const message =
     error === "denied"
       ? `${email || "That account"} is not on the allowlist. Add it to AUTH_ALLOWED_EMAILS if it should be.`
-      : error === "missing_code"
+      : error === "auth_unavailable"
+        ? "Cannot reach Supabase auth (DNS/network failure). Check NEXT_PUBLIC_SUPABASE_URL — the project may be paused, deleted, or mistyped. See terminal for NXDOMAIN."
+        : error === "missing_code"
         ? "Google redirected back without an authorization code. Try again."
         : detail || "Sign-in failed. Try again.";
 

@@ -48,12 +48,19 @@ export const getAuthStatus = cache(async (): Promise<AuthStatus> => {
   if (!authConfigured()) return { state: "unconfigured", missing: ["supabase"] };
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return { state: "anonymous" };
-
-  const email = data.user.email ?? "";
-  if (!isAllowedEmail(email)) return { state: "denied", email };
-  return { state: "ok", user: data.user, email };
+  // getUser() throws (AuthRetryableFetchError) on network/DNS failure rather
+  // than returning { error } — e.g. NXDOMAIN when NEXT_PUBLIC_SUPABASE_URL
+  // points at a deleted/paused project. Treat as anonymous so callers
+  // redirect to /login instead of 500ing.
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) return { state: "anonymous" };
+    const email = data.user.email ?? "";
+    if (!isAllowedEmail(email)) return { state: "denied", email };
+    return { state: "ok", user: data.user, email };
+  } catch {
+    return { state: "anonymous" };
+  }
 });
 
 export async function getSessionUser(): Promise<User | null> {

@@ -58,9 +58,25 @@ export async function proxy(request: NextRequest) {
   });
 
   // Must run: this is what rotates the token onto `response`.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Wrapped: Supabase auth-js throws AuthRetryableFetchError on network/DNS
+  // failure (e.g. NXDOMAIN, paused project) instead of returning { error }.
+  // Without this, one bad NEXT_PUBLIC_SUPABASE_URL 500s every route.
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    // Unreachable auth backend: fail closed for protected pages, but never
+    // 500 public/API routes. Protected pages redirect with a distinct error
+    // so /login can explain it instead of showing a stack trace.
+    if (isPublic(request.nextUrl.pathname) || isApi(request.nextUrl.pathname)) {
+      return response;
+    }
+    const to = request.nextUrl.clone();
+    to.pathname = "/login";
+    to.search = "?error=auth_unavailable";
+    return NextResponse.redirect(to);
+  }
 
   if (!user && !isPublic(request.nextUrl.pathname) && !isApi(request.nextUrl.pathname)) {
     const to = request.nextUrl.clone();

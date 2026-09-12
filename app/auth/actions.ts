@@ -18,21 +18,31 @@ async function originFromRequest(): Promise<string> {
 export async function signInWithGoogleAction() {
   const supabase = await createClient();
   const origin = await originFromRequest();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${origin}/auth/callback`,
-      queryParams: { access_type: "offline", prompt: "consent" },
-    },
-  });
-  if (error || !data.url) {
-    redirect(`/login?error=oauth&detail=${encodeURIComponent(error?.message ?? "no url")}`);
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${origin}/auth/callback`,
+        queryParams: { access_type: "offline", prompt: "consent" },
+      },
+    });
+    if (error || !data.url) {
+      redirect(`/login?error=oauth&detail=${encodeURIComponent(error?.message ?? "no url")}`);
+    }
+    redirect(data.url);
+  } catch (e) {
+    redirect(
+      `/login?error=auth_unavailable&detail=${encodeURIComponent(e instanceof Error ? e.message : "auth fetch failed")}`,
+    );
   }
-  redirect(data.url);
 }
 
 export async function signOutAction() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // Unreachable auth backend — still bounce to /login.
+  }
   redirect("/login");
 }
